@@ -5,7 +5,6 @@ import {
   FileText, 
   Calendar, 
   Award, 
-  Settings, 
   Bell, 
   Search,
   Plus,
@@ -17,12 +16,9 @@ import {
   BarChart3,
   MapPin,
   Upload,
-  Download,
   LogOut,
   Sparkles,
-  Send,
-  MessageSquare,
-  Cpu
+  Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -109,7 +105,35 @@ const dict = {
     ai_placeholder: 'ASK SYSTEM A QUESTION...',
     ai_generate: 'Generate with AI',
     ai_thinking: 'SYSTEM THINKING...',
-    ai_intro: 'How can I assist with your organizational objectives today?'
+    ai_intro: 'How can I assist with your organizational objectives today?',
+    ai_insights: 'Nexus AI Insights',
+    // Table headers
+    th_id: 'ID',
+    th_type: 'Type',
+    th_applicant: 'Applicant & Details',
+    th_date: 'Date Submitted',
+    th_status: 'Status',
+    th_actions: 'Actions',
+    th_student_id: 'Student ID',
+    th_name: 'Name',
+    th_role: 'Role',
+    th_department: 'Department',
+    th_join_date: 'Join Date',
+    // Form fields
+    category: 'Category',
+    description: 'Description',
+    club_image: 'Club Logo / Image',
+    // Approvals
+    admin_req: 'ADMIN REQ',
+    processed: 'PROCESSED',
+    // Confirmations
+    are_you_sure: 'Are you sure?',
+    confirm_delete: 'CONFIRM DELETE',
+    confirm: 'CONFIRM',
+    purge_data: 'PURGE SYSTEM DATA',
+    // Loading
+    loading: 'Initializing System...',
+    no_members: 'No Members Found',
   },
   zh: {
     platform_overview: '平台概览',
@@ -174,7 +198,35 @@ const dict = {
     ai_placeholder: '向系统提问...',
     ai_generate: '由 AI 生成',
     ai_thinking: '系统思考中...',
-    ai_intro: '今天我能如何协助您的组织目标？'
+    ai_intro: '今天我能如何协助您的组织目标？',
+    ai_insights: 'Nexus AI 智能分析',
+    // Table headers
+    th_id: '编号',
+    th_type: '类型',
+    th_applicant: '申请人 & 详情',
+    th_date: '提交日期',
+    th_status: '状态',
+    th_actions: '操作',
+    th_student_id: '学号',
+    th_name: '姓名',
+    th_role: '角色',
+    th_department: '院系',
+    th_join_date: '加入日期',
+    // Form fields
+    category: '类别',
+    description: '描述',
+    club_image: '社团图片',
+    // Approvals
+    admin_req: '需管理员审核',
+    processed: '已处理',
+    // Confirmations
+    are_you_sure: '确定吗？',
+    confirm_delete: '确认删除',
+    confirm: '确认',
+    purge_data: '清空所有数据',
+    // Loading
+    loading: '正在初始化系统...',
+    no_members: '暂无成员',
   }
 };
 
@@ -185,8 +237,23 @@ const LanguageContext = createContext<{lang: Lang, t: (key: keyof typeof dict['e
 });
 const useTranslation = () => useContext(LanguageContext);
 
-// --- Components ---
-const activityData: any[] = [];
+// Activity trend — computed from real approval data
+const computeActivityData = (approvals: any[]) => {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const today = new Date();
+  const result = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dayStr = d.toISOString().split('T')[0];
+    const count = approvals.filter(a => {
+      const approvalDate = a.date || a.created_at;
+      return approvalDate && String(approvalDate).split('T')[0] === dayStr;
+    }).length;
+    result.push({ name: days[d.getDay() === 0 ? 6 : d.getDay() - 1], activities: count });
+  }
+  return result;
+};
 
 const AIAssistant = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -338,7 +405,7 @@ const DashboardTab = ({ clubs, approvals }: { clubs: any[], approvals: any[] }) 
       >
         <Sparkles className="w-8 h-8 mr-4 mt-1 shrink-0" />
         <div>
-          <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest mb-2 opacity-80">Nexus AI Insights</h3>
+          <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest mb-2 opacity-80">{t('ai_insights')}</h3>
           <p className="font-serif italic text-xl">
             {isGenerating ? t('ai_thinking') : insight}
           </p>
@@ -371,7 +438,7 @@ const DashboardTab = ({ clubs, approvals }: { clubs: any[], approvals: any[] }) 
           </div>
           <div className="h-64 p-4">
             <ResponsiveContainer width="100%" height="100%" minHeight={1}>
-              <LineChart data={activityData}>
+              <LineChart data={computeActivityData(approvals)}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#141414" opacity={0.2} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontFamily: 'monospace', fontSize: 10, fill: '#141414'}} />
                 <YAxis axisLine={false} tickLine={false} tick={{fontFamily: 'monospace', fontSize: 10, fill: '#141414'}} />
