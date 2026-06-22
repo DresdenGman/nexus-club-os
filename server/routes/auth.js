@@ -4,7 +4,7 @@ import { getSupabase } from '../db.js';
 
 const router = Router();
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'administrator@admin.com,admin@nexusclub.com').split(',').map(e => e.trim());
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'administrator@admin.com,admin@nexusclub.com,manager@nexusclub.com').split(',').map(e => e.trim());
 
 // Token blacklist with periodic cleanup
 let tokenBlacklist = new Map();
