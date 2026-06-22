@@ -1303,13 +1303,6 @@ function MainApp() {
           </div>
 
           <div className="border-t border-line pt-4 mt-4">
-            <button onClick={() => {
-              const demoUser = { uid: 'demo-admin', email: 'administrator@admin.com', displayName: 'Demo Admin', photoURL: null } as any;
-              const demoProfile = { uid: 'demo-admin', name: 'Demo Admin', email: 'administrator@admin.com', role: 'admin', department: 'CS', joinDate: new Date().toISOString(), contribution: 0 };
-              window.__demoLogin?.({ user: demoUser, profile: demoProfile });
-            }} className="w-full font-mono text-[10px] uppercase border border-accent text-accent px-3 py-2 hover:bg-accent hover:text-bg transition-colors mt-2">
-              DEMO MODE (bypass auth)
-            </button>
           </div>
         </div>
       </div>

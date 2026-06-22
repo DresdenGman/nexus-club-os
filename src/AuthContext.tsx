@@ -50,19 +50,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sessionStorage.removeItem('__auth_token');
         }
       }
-
-      // Check demo login
-      const demoData = sessionStorage.getItem('__demoLogin');
-      if (demoData) {
-        try {
-          const { user: du, profile: dp } = JSON.parse(demoData);
-          setUser(du);
-          setProfile(dp);
-          setLoading(false);
-          return;
-        } catch {}
-      }
-
       setLoading(false);
     };
     init();
@@ -88,7 +75,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     sessionStorage.removeItem('__auth_token');
-    sessionStorage.removeItem('__demoLogin');
     setUser(null);
     setProfile(null);
     location.reload();
