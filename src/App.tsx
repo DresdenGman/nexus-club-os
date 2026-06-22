@@ -280,7 +280,7 @@ const DashboardTab = ({ clubs, approvals }: { clubs: any[], approvals: any[] }) 
     const generateInsight = async () => {
       setIsGenerating(true);
       const totalClubs = clubs.length;
-      const totalMembers = clubs.reduce((acc, c) => acc + (Number(c.membersCount) || 1), 0);
+      const totalMembers = clubs.reduce((acc, c) => acc + (Number(c.members_count) || 1), 0);
       const pendingApps = approvals.filter(a => a.status === 'Pending Review').length;
       
       const statsSummary = `
@@ -317,7 +317,7 @@ const DashboardTab = ({ clubs, approvals }: { clubs: any[], approvals: any[] }) 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-[1px] bg-line border border-line">
         {[
           { label: t('total_clubs'), value: clubs.length, icon: Users },
-          { label: t('active_members'), value: clubs.reduce((acc, c) => acc + (Number(c.membersCount) || 1), 0), icon: Users },
+          { label: t('active_members'), value: clubs.reduce((acc, c) => acc + (Number(c.members_count) || 1), 0), icon: Users },
           { label: t('pending_apps'), value: approvals.filter(a => a.status === 'Pending Review').length, icon: Clock },
           { label: t('events_week'), value: '0', icon: Calendar },
         ].map((stat, i) => (
@@ -444,7 +444,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
                   <div>
                     <h2 className="font-serif italic text-3xl mb-2">{selectedClub.name}</h2>
                     <div className="font-mono text-[11px] uppercase opacity-60 flex items-center">
-                        <Users className="w-4 h-4 mr-2" /> {selectedClub.membersCount || selectedClub.members || 1} {t('members_count')}
+                        <Users className="w-4 h-4 mr-2" /> {selectedClub.members_count || selectedClub.members || 1} {t('members_count')}
                     </div>
                   </div>
                   <span className="font-mono text-[10px] uppercase border border-line px-3 py-1 bg-ink text-bg">
@@ -563,7 +563,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
             <div className="p-4">
               <h3 className="font-serif italic text-lg mb-2">{club.name}</h3>
               <div className="font-mono text-[10px] uppercase opacity-60 mb-4 flex items-center">
-                <Users className="w-3 h-3 mr-1" /> {club.membersCount || club.members || 1} {t('members_count')}
+                <Users className="w-3 h-3 mr-1" /> {club.members_count || club.members || 1} {t('members_count')}
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-mono text-[9px] uppercase border border-line px-1.5 py-0.5 group-hover:border-bg">
@@ -720,7 +720,7 @@ const ApprovalsTab = ({ approvals, onApprove, onReject, isAdmin }: { approvals: 
                 <td className="p-3 font-mono opacity-50 text-[11px] truncate">{String(item.id).substring(0, 8)}</td>
                 <td className="p-3 truncate">{item.type}</td>
                 <td className="p-3 truncate">
-                  <div className="truncate font-medium">{item.applicantName || item.applicant}</div>
+                  <div className="truncate font-medium">{item.applicant_name || item.applicantName || item.applicant}</div>
                   {item.details && (
                     <div className="opacity-60 text-[10px] mt-0.5 truncate">
                       {(() => {
@@ -813,7 +813,7 @@ const MembersTab = ({ members, showToast, isAdmin, onDeleteMember }: { members: 
                     </span>
                   </td>
                   <td className="p-3 truncate">{member.department || 'N/A'}</td>
-                  <td className="p-3 font-mono text-[11px] opacity-80 truncate">{member.joinDate ? String(member.joinDate).split('T')[0] : 'N/A'}</td>
+                  <td className="p-3 font-mono text-[11px] opacity-80 truncate">{member.join_date || member.joinDate ? String(member.join_date || member.joinDate).split('T')[0] : 'N/A'}</td>
                   <td className="p-3 text-right">
                     <div className="flex space-x-3 items-center justify-end">
                       <button onClick={() => showToast(t('edit_locked'), 'error')} className="font-mono text-[10px] uppercase hover:text-accent transition-colors">Edit</button>
@@ -1302,9 +1302,6 @@ function MainApp() {
              </button>
              <span className="font-mono text-[10px] uppercase opacity-40">v0.4.3</span>
           </div>
-
-          <div className="border-t border-line pt-4 mt-4">
-          </div>
         </div>
       </div>
     );
@@ -1393,7 +1390,7 @@ function MainApp() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3 overflow-hidden">
                 <div className="w-8 h-8 shrink-0 border border-line flex items-center justify-center font-serif italic text-lg bg-ink text-bg overflow-hidden">
-                  {profile.avatar ? <img src={profile.avatar} alt="avatar" /> : profile.name.charAt(0)}
+                  {profile.avatar ? <img src={profile.avatar} alt="avatar" /> : (profile.name || '?').charAt(0)}
                 </div>
                 <div className="font-mono overflow-hidden">
                   <p className="text-[10px] font-bold uppercase truncate max-w-full">{profile.name}</p>
