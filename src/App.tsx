@@ -384,12 +384,11 @@ const DashboardTab = ({ clubs, approvals }: { clubs: any[], approvals: any[] }) 
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-[1px] bg-line border border-line">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-[1px] bg-line border border-line">
         {[
           { label: t('total_clubs'), value: clubs.length, icon: Users },
           { label: t('active_members'), value: clubs.reduce((acc, c) => acc + (Number(c.members_count) || 1), 0), icon: Users },
           { label: t('pending_apps'), value: approvals.filter(a => a.status === 'Pending Review').length, icon: Clock },
-          { label: t('events_week'), value: '0', icon: Calendar },
         ].map((stat, i) => (
           <div key={i} className="bg-bg p-5 flex flex-col">
             <div className="font-mono text-[9px] uppercase opacity-60 mb-4 flex justify-between items-center">
@@ -584,11 +583,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
               </div>
               <div>
                  <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest opacity-60 mb-4">{t('recent_act')}</h3>
-                 <ul className="space-y-3 font-sans text-[13px]">
-                   <li className="flex items-center"><CheckCircle className="w-4 h-4 mr-2 opacity-50"/> Fall 2023 Hackathon Organization</li>
-                   <li className="flex items-center"><CheckCircle className="w-4 h-4 mr-2 opacity-50"/> Seminar: Future of Algorithms</li>
-                   <li className="flex items-center"><CheckCircle className="w-4 h-4 mr-2 opacity-50"/> Weekly Coding Dojos</li>
-                 </ul>
+                 <p className="font-mono text-[11px] uppercase opacity-40 italic">Activity feed coming soon</p>
               </div>
             </div>
           </div>
@@ -1238,6 +1233,7 @@ function MainApp() {
       link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 100);
       document.body.removeChild(link);
       showToast(t('export_success'), 'success');
     } catch (e: any) {
@@ -1279,14 +1275,10 @@ function MainApp() {
     e.preventDefault();
     setAuthError('');
     try {
-      let authEmail = email;
-      if (email.toLowerCase() === 'administrator') {
-        authEmail = 'administrator@admin.com';
-      }
       if (isLoginFlow) {
-        await loginWithEmail(authEmail, password);
+        await loginWithEmail(email, password);
       } else {
-        await signupWithEmail(authEmail, password, signUpName || email.split('@')[0]);
+        await signupWithEmail(email, password, signUpName || email.split('@')[0]);
         setShowWelcome(true);
       }
     } catch (err: any) {
