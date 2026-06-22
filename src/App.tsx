@@ -1083,10 +1083,7 @@ function MainApp() {
     refreshData();
   }, [profile]);
   
-  const isAdmin = profile?.role === 'admin' ||
-                  user?.email === 'administrator@admin.com' ||
-                  user?.email === 'dresdengoehner@gmail.com' ||
-                  user?.email === 'admin@nexusclub.com';
+  const isAdmin = profile?.role === 'admin';
 
   const handleLogout = () => {
     authLogout();

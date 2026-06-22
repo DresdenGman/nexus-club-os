@@ -27,6 +27,16 @@ const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
 app.use(cors(isProd ? { origin: true } : {}));
 app.use(express.json({ limit: '10mb' }));
+
+// Request logging
+app.use((req, _res, next) => {
+  const start = Date.now();
+  next();
+  const ms = Date.now() - start;
+  if (req.path.startsWith('/api')) {
+    console.error(`${req.method} ${req.path} ${_res.statusCode || '---'} ${ms}ms`);
+  }
+});
 app.use('/api/chat', chatRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/auth', authRoutes);

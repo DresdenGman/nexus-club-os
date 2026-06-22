@@ -1,17 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
 
 let supabase = null;
+let initAttempts = 0;
 
 export function getSupabase() {
   if (!supabase) {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_ANON_KEY;
     if (!url || !key) {
-      throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env');
+      throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set');
     }
-    supabase = createClient(url, key);
+    supabase = createClient(url, key, {
+      auth: { persistSession: false },
+      global: { headers: { 'X-Client-Info': 'nexus-club-os' } },
+    });
   }
   return supabase;
+}
+
+// Reset connection (useful if connection becomes stale)
+export function resetSupabase() {
+  supabase = null;
+  initAttempts = 0;
 }
 
 // === Clubs ===
@@ -81,6 +91,6 @@ export async function createUser(user) {
 }
 
 export async function deleteUser(id) {
-  const { error } = await getSupabase().from('users').delete().eq('id', id);
+  const { error } = await getSupabase().from('users').delete().eq('uid', id);
   if (error) throw error;
 }

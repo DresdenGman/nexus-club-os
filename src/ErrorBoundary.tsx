@@ -43,20 +43,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <div className="max-w-xl w-full border-4 border-[#141414] bg-white p-8 shadow-[8px_8px_0px_0px_rgba(20,20,20,1)]">
             <h1 className="font-serif italic text-3xl mb-4 text-[#FF4400]">System Error</h1>
             <div className="font-mono text-sm mb-6 p-4 bg-[#141414] text-[#E4E3E0] overflow-auto">
-              {isFirestoreError ? (
-                <div>
-                  <p className="text-[#FF4400] mb-2">Firestore Operation Failed</p>
-                  <p>{errorMessage}</p>
-                </div>
-              ) : (
-                <p>{errorMessage}</p>
-              )}
+              <p>{errorMessage}</p>
             </div>
             <button
               className="bg-[#141414] text-[#E4E3E0] font-mono text-xs uppercase font-bold px-6 py-3 hover:bg-[#FF4400] transition-colors"
               onClick={() => this.setState({ hasError: false, error: null })}
             >
-              Acknowledge & Continue
+              Reload & Continue
             </button>
           </div>
         </div>
