@@ -1,9 +1,13 @@
 // API client for Nexus Club OS backend
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = window.location.origin + '/api';
 
 async function request(path: string, options: RequestInit = {}) {
+  const token = sessionStorage.getItem('__auth_token');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: { ...headers, ...(options.headers || {}) },
     ...options,
   });
   if (!res.ok) {
@@ -11,6 +15,32 @@ async function request(path: string, options: RequestInit = {}) {
     throw new Error(err.error || err.detail || `HTTP ${res.status}`);
   }
   return res.json();
+}
+
+// ── Auth API ──
+
+export async function signup(email: string, password: string, name: string, department?: string) {
+  return request('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, name, department }),
+  });
+}
+
+export async function login(email: string, password: string) {
+  return request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function getSession() {
+  return request('/auth/session');
+}
+
+export interface AuthResult {
+  user: { uid: string; email: string; displayName?: string } | null;
+  profile: { uid: string; name: string; email: string; role: string; department?: string; joinDate?: string; contribution?: number; avatar?: string } | null;
+  session?: { access_token: string; refresh_token: string };
 }
 
 // ── Data API ──

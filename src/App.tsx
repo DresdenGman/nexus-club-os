@@ -976,7 +976,7 @@ const ResourcesTab = ({ addApproval, showToast, userName }: { addApproval: (type
 };
 
 function MainApp() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, loginWithEmail, signupWithEmail, logout: authLogout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const { t, lang } = useTranslation();
 
@@ -1016,13 +1016,13 @@ function MainApp() {
     refreshData();
   }, [profile]);
   
-  const isAdmin = profile?.role === 'admin' || 
-                  user?.email === 'administrator@admin.com' || 
-                  user?.email === 'dresdengoehner@gmail.com';
+  const isAdmin = profile?.role === 'admin' ||
+                  user?.email === 'administrator@admin.com' ||
+                  user?.email === 'dresdengoehner@gmail.com' ||
+                  user?.email === 'admin@nexusclub.com';
 
   const handleLogout = () => {
-    sessionStorage.removeItem('__demoLogin');
-    location.reload();
+    authLogout();
   };
 
   const handleSystemPurge = async () => {
@@ -1208,9 +1208,23 @@ function MainApp() {
     );
   }
 
-  const handleEmailAuth = (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError('Email/password login is disabled. Please use Demo Mode below.');
+    setAuthError('');
+    try {
+      let authEmail = email;
+      if (email.toLowerCase() === 'administrator') {
+        authEmail = 'administrator@admin.com';
+      }
+      if (isLoginFlow) {
+        await loginWithEmail(authEmail, password);
+      } else {
+        await signupWithEmail(authEmail, password, signUpName || email.split('@')[0]);
+        setShowWelcome(true);
+      }
+    } catch (err: any) {
+      setAuthError(err.message || t('auth_error'));
+    }
   };
 
   if (!user || !profile) {

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   uid TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
+  password_hash TEXT,
   role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'president', 'member')),
   department TEXT,
   join_date TIMESTAMPTZ DEFAULT now(),

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import * as api from './api';
 
 interface UserProfile {
   uid: string;
@@ -12,45 +13,89 @@ interface UserProfile {
 }
 
 interface AuthContextType {
-  user: { uid: string; email: string; displayName: string; photoURL: string | null } | null;
+  user: { uid: string; email: string; displayName?: string } | null;
   profile: UserProfile | null;
   loading: boolean;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  signupWithEmail: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, profile: null, loading: true });
+const AuthContext = createContext<AuthContextType>({
+  user: null, profile: null, loading: true,
+  loginWithEmail: async () => {},
+  signupWithEmail: async () => {},
+  logout: () => {},
+});
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthContextType['user']>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Check for existing session on mount
   useEffect(() => {
-    // Check for demo login stored in sessionStorage (survives reload)
-    const demoData = sessionStorage.getItem('__demoLogin');
-    if (demoData) {
-      try {
-        const { user: demoUser, profile: demoProfile } = JSON.parse(demoData);
-        setUser(demoUser);
-        setProfile(demoProfile);
-        setLoading(false);
-        return;
-      } catch {}
-    }
+    const init = async () => {
+      const token = sessionStorage.getItem('__auth_token');
+      if (token) {
+        try {
+          const data = await api.getSession();
+          if (data.user) {
+            setUser(data.user);
+            setProfile(data.profile);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          sessionStorage.removeItem('__auth_token');
+        }
+      }
 
-    // No auth — show login screen
-    setLoading(false);
-  }, []);
+      // Check demo login
+      const demoData = sessionStorage.getItem('__demoLogin');
+      if (demoData) {
+        try {
+          const { user: du, profile: dp } = JSON.parse(demoData);
+          setUser(du);
+          setProfile(dp);
+          setLoading(false);
+          return;
+        } catch {}
+      }
 
-  // Expose demo login: persist to sessionStorage then reload
-  useEffect(() => {
-    (window as any).__demoLogin = (data: any) => {
-      sessionStorage.setItem('__demoLogin', JSON.stringify(data));
-      location.reload();
+      setLoading(false);
     };
+    init();
   }, []);
+
+  const loginWithEmail = async (email: string, password: string) => {
+    const data = await api.login(email, password);
+    if (data.session?.access_token) {
+      sessionStorage.setItem('__auth_token', data.session.access_token);
+    }
+    setUser(data.user);
+    setProfile(data.profile);
+  };
+
+  const signupWithEmail = async (email: string, password: string, name: string) => {
+    const data = await api.signup(email, password, name);
+    if (data.session?.access_token) {
+      sessionStorage.setItem('__auth_token', data.session.access_token);
+    }
+    setUser(data.user);
+    setProfile(data.profile);
+  };
+
+  const logout = () => {
+    sessionStorage.removeItem('__auth_token');
+    sessionStorage.removeItem('__demoLogin');
+    setUser(null);
+    setProfile(null);
+    location.reload();
+  };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading }}>
+    <AuthContext.Provider value={{ user, profile, loading, loginWithEmail, signupWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

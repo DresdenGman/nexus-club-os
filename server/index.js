@@ -19,6 +19,7 @@ console.error('[STARTUP] Key MD5:', crypto.createHash('md5').update(AGNES_KEY).d
 // Import routes AFTER dotenv.config()
 const { default: chatRoutes } = await import('./routes/chat.js');
 const { default: dataRoutes } = await import('./routes/data.js');
+const { default: authRoutes } = await import('./routes/auth.js');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use('/api/chat', chatRoutes);
 app.use('/api/data', dataRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
