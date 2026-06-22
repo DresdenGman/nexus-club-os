@@ -2,19 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import crypto from 'crypto';
 
 // MUST load .env BEFORE any imports that read process.env
 import dotenv from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// Load .env (optional — on Render, env vars come from dashboard)
 dotenv.config({ path: path.join(__dirname, '.env') });
-// Also try loading from project root (for Render compatibility)
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
-
-const AGNES_KEY = process.env.AGNES_API_KEY || '';
-console.error('[STARTUP] Key MD5:', crypto.createHash('md5').update(AGNES_KEY).digest('hex'));
 
 // Import routes AFTER dotenv.config()
 const { default: chatRoutes } = await import('./routes/chat.js');
@@ -25,18 +19,20 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 const isProd = process.env.NODE_ENV === 'production';
-app.use(cors(isProd ? { origin: true } : {}));
+app.use(cors(isProd ? {} : {}));
 app.use(express.json({ limit: '10mb' }));
 
-// Request logging
-app.use((req, _res, next) => {
+// Request logging (reads statusCode after response is sent)
+app.use((req, res, next) => {
   const start = Date.now();
+  res.on('finish', () => {
+    if (req.path.startsWith('/api')) {
+      console.error(`${req.method} ${req.path} ${res.statusCode} ${Date.now() - start}ms`);
+    }
+  });
   next();
-  const ms = Date.now() - start;
-  if (req.path.startsWith('/api')) {
-    console.error(`${req.method} ${req.path} ${_res.statusCode || '---'} ${ms}ms`);
-  }
 });
+
 app.use('/api/chat', chatRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/auth', authRoutes);
@@ -56,5 +52,4 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.error(`Server running: http://localhost:${PORT}`);
-  console.error(`Health: http://localhost:${PORT}/api/health`);
 });

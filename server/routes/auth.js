@@ -6,23 +6,35 @@ const router = Router();
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'administrator@admin.com,admin@nexusclub.com').split(',').map(e => e.trim());
 
-// Token blacklist (in-memory — restart clears it, fine for now)
-const tokenBlacklist = new Set();
+// Token blacklist with periodic cleanup
+let tokenBlacklist = new Map();
+
+function cleanTokenBlacklist() {
+  const now = Date.now();
+  const newMap = new Map();
+  for (const [token, exp] of tokenBlacklist) {
+    if (exp > now) newMap.set(token, exp);
+  }
+  tokenBlacklist = newMap;
+}
+
+// Clean every hour
+setInterval(cleanTokenBlacklist, 60 * 60 * 1000);
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
   return `${salt}:${hash}`;
 }
 
 function verifyPassword(password, stored) {
   const [salt, hash] = stored.split(':');
-  const verify = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-  return hash === verify;
+  const verify = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+  return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(verify));
 }
 
 function generateToken(uid, email) {
-  const secret = process.env.AUTH_SECRET || 'nexus-club-os-secret-2024';
+  const secret = process.env.AUTH_SECRET || crypto.randomBytes(32).toString('hex');
   const payload = { uid, email, iat: Date.now(), exp: Date.now() + 7 * 24 * 60 * 60 * 1000, jti: crypto.randomUUID() };
   const data = JSON.stringify(payload);
   const hmac = crypto.createHmac('sha256', secret).update(data).digest('hex');
@@ -37,18 +49,15 @@ function verifyToken(token) {
     const data = Buffer.from(encoded, 'base64').toString('utf-8');
     const secret = process.env.AUTH_SECRET || 'nexus-club-os-secret-2024';
     const expected = crypto.createHmac('sha256', secret).update(data).digest('hex');
-    if (signature !== expected) return null;
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
     const payload = JSON.parse(data);
     if (payload.exp < Date.now()) return null;
     return { uid: payload.uid, email: payload.email };
   } catch { return null; }
 }
 
-// Length validation
 function validateLength(value, field, max) {
-  if (value && value.length > max) {
-    return `${field} must be under ${max} characters`;
-  }
+  if (value && value.length > max) return `${field} must be under ${max} characters`;
   return null;
 }
 
@@ -56,11 +65,11 @@ function validateLength(value, field, max) {
 router.post('/signup', async (req, res) => {
   try {
     const { email, password, name, department } = req.body;
-
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
     if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
-    const err = validateLength(email, 'Email', 254) || validateLength(password, 'Password', 128) || validateLength(name, 'Name', 100) || validateLength(department, 'Department', 100);
+    const err = validateLength(email, 'Email', 254) || validateLength(password, 'Password', 128)
+      || validateLength(name, 'Name', 100) || validateLength(department, 'Department', 100);
     if (err) return res.status(400).json({ error: err });
 
     if (!email.includes('@') || !email.includes('.')) {
@@ -87,14 +96,11 @@ router.post('/signup', async (req, res) => {
       .select('uid,name,email,role,department,join_date,contribution,avatar,created_at')
       .eq('uid', uid).single();
     const token = generateToken(uid, cleanEmail);
-
     res.status(201).json({
       user: { uid, email: cleanEmail, displayName: name || cleanEmail.split('@')[0] },
       profile, session: { access_token: token },
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // POST /api/auth/login
@@ -105,13 +111,13 @@ router.post('/login', async (req, res) => {
 
     const supabase = getSupabase();
     const cleanEmail = email.toLowerCase().trim();
-
     const { data: user, error } = await supabase.from('users')
       .select('uid,name,email,role,department,join_date,contribution,avatar,password_hash,created_at')
       .eq('email', cleanEmail).maybeSingle();
-
     if (error || !user) return res.status(401).json({ error: 'Invalid email or password' });
-    if (!verifyPassword(password, user.password_hash)) return res.status(401).json({ error: 'Invalid email or password' });
+    if (!user.password_hash || !verifyPassword(password, user.password_hash)) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
 
     if (ADMIN_EMAILS.includes(cleanEmail) && user.role !== 'admin') {
       await supabase.from('users').update({ role: 'admin' }).eq('uid', user.uid);
@@ -120,14 +126,8 @@ router.post('/login', async (req, res) => {
 
     const { password_hash, ...profile } = user;
     const token = generateToken(user.uid, user.email);
-
-    res.json({
-      user: { uid: user.uid, email: user.email, displayName: user.name },
-      profile, session: { access_token: token },
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    res.json({ user: { uid: user.uid, email: user.email, displayName: user.name }, profile, session: { access_token: token } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // GET /api/auth/session
@@ -145,19 +145,22 @@ router.get('/session', async (req, res) => {
     if (!user) return res.json({ user: null, profile: null });
 
     const { password_hash, ...profile } = user;
-    res.json({
-      user: { uid: user.uid, email: user.email, displayName: user.name },
-      profile, session: { access_token: token },
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    res.json({ user: { uid: user.uid, email: user.email, displayName: user.name }, profile, session: { access_token: token } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST /api/auth/logout — invalidate token
+// POST /api/auth/logout — invalidate token with expiration
 router.post('/logout', (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (token) tokenBlacklist.add(token);
+  if (token) {
+    try {
+      const [encoded] = token.split('.');
+      if (encoded) {
+        const data = JSON.parse(Buffer.from(encoded, 'base64').toString('utf-8'));
+        tokenBlacklist.set(token, data.exp || Date.now() + 7 * 24 * 60 * 60 * 1000);
+      }
+    } catch { tokenBlacklist.set(token, Date.now() + 7 * 24 * 60 * 60 * 1000); }
+  }
   res.json({ success: true });
 });
 

@@ -38,9 +38,10 @@ router.get('/clubs', async (_req, res) => {
 router.post('/clubs', requireAuth, async (req, res) => {
   try {
     const clean = whitelist(req.body, CLUB_FIELDS);
+    // Default president_id to current user
+    if (!clean.president_id) clean.president_id = req.user.uid;
     // Only allow creating own club or admin
-    if (clean.president_id && clean.president_id !== req.user.uid) {
-      // Check if admin (read from users table)
+    if (clean.president_id !== req.user.uid) {
       const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).single();
       if (profile?.role !== 'admin') {
         return res.status(403).json({ error: 'Cannot create club for another user' });
