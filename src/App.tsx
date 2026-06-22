@@ -53,7 +53,7 @@ const dict = {
     members: 'Members',
     resources: 'Resources',
     login_title: 'Club Platform',
-    login_subtitle: 'University System // Authentication Required',
+    login_subtitle: 'BRS Club Platform // Beijing Royal School',
     email: 'Email Address',
     password: 'Password',
     login_btn: 'Log In',
@@ -67,8 +67,8 @@ const dict = {
     register_club: 'Register New Club',
     members_count: 'Members',
     view: 'View',
-    status_system: 'SYSTEM STATUS: NOMINAL // ALL SYSTEMS GO',
-    file_path: 'FILE_PATH: /SYSTEMS/PROJECTS/CLUB_PLATFORM.MD',
+    status_system: 'SYSTEM STATUS: NOMINAL // BRS CLUB PLATFORM',
+    file_path: 'FILE_PATH: /BRS/CLUBS/PLATFORM.MD',
     auth_error: 'Authentication failed. Please check credentials.',
     total_clubs: 'Total Clubs',
     active_members: 'Active Members',
@@ -118,7 +118,7 @@ const dict = {
     members: '成员管理',
     resources: '资源申请',
     login_title: '社团管理平台',
-    login_subtitle: '高校系统 // 需要身份认证',
+    login_subtitle: '北京王府学校社团管理平台 // 需要登录',
     email: '电子邮箱',
     password: '密码',
     login_btn: '登 录',
@@ -132,8 +132,8 @@ const dict = {
     register_club: '注册新社团',
     members_count: '名成员',
     view: '查看详情',
-    status_system: '系统状态：正常 // 所有系统运行中',
-    file_path: '文件路径: /系统/项目/社团平台.MD',
+    status_system: '系统状态：正常 // 北京王府学校社团平台',
+    file_path: '文件路径: /BRS/社团/平台.MD',
     auth_error: '身份验证失败或者未启用邮箱登录，请检查控制台设置。',
     total_clubs: '社团总数',
     active_members: '活跃成员',
@@ -203,7 +203,7 @@ const AIAssistant = ({ onClose }: { onClose: () => void }) => {
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setLoading(true);
 
-    const response = await askAI(userMsg, "Context: Currently in the University Club Management Platform.");
+    const response = await askAI(userMsg, "Context: Currently in the Beijing Royal School (BRS) Club Management Platform.");
     setMessages(prev => [...prev, { role: 'ai', text: response }]);
     setLoading(false);
   };
@@ -294,7 +294,7 @@ const DashboardTab = ({ clubs, approvals }: { clubs: any[], approvals: any[] }) 
       if (totalClubs === 0 && pendingApps === 0) {
         setInsight("System core is purged. Awaiting initial organizational registration requests to begin analysis.");
       } else {
-        const prompt = `Based on these real-time university club statistics, generate a single-sentence professional administrative insight. Do not invent data outside of what is provided. ${statsSummary}`;
+        const prompt = `Based on these real-time high school club statistics from Beijing Royal School, generate a single-sentence professional administrative insight. Do not invent data outside of what is provided. ${statsSummary}`;
         const result = await askAI(prompt);
         setInsight(result);
       }
@@ -1420,7 +1420,7 @@ function MainApp() {
       <footer className="h-10 border-t-2 border-line bg-[#D9D8D5] flex items-center justify-between px-6 font-mono text-[10px] uppercase shrink-0">
         <div>{t('status_system')}</div>
         <div>{t('file_path')}</div>
-        <div>&copy; 2024 UNIVERSITY SYSTEMS</div>
+        <div>&copy; 2024 BEIJING ROYAL SCHOOL</div>
       </footer>
 
       {showWelcome && (
