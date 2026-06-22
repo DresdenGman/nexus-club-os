@@ -659,7 +659,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
                 />
               </div>
               <div>
-                <label className="block font-mono text-[9px] uppercase opacity-60 mb-2">Category</label>
+                <label className="block font-mono text-[9px] uppercase opacity-60 mb-2">{t("category")}</label>
                 <select 
                   value={newClubType}
                   onChange={(e) => setNewClubType(e.target.value)}
@@ -673,7 +673,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
                 </select>
               </div>
               <div>
-                <label className="block font-mono text-[9px] uppercase opacity-60 mb-2">Description</label>
+                <label className="block font-mono text-[9px] uppercase opacity-60 mb-2">{t("description")}</label>
                 <textarea 
                   value={newClubDesc}
                   onChange={(e) => setNewClubDesc(e.target.value)}
@@ -683,7 +683,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
                 />
               </div>
               <div>
-                <label className="block font-mono text-[9px] uppercase opacity-60 mb-2">Club Logo / Image</label>
+                <label className="block font-mono text-[9px] uppercase opacity-60 mb-2">{t("club_image")}</label>
                 <div className="flex flex-col space-y-2">
                   <input 
                     type="file" 
@@ -770,12 +770,12 @@ const ApprovalsTab = ({ approvals, onApprove, onReject, isAdmin }: { approvals: 
         <table className="w-full text-left border-collapse table-fixed">
           <thead>
             <tr className="font-mono text-[9px] uppercase opacity-60 border-b border-line">
-              <th className="p-3 font-normal w-24">ID</th>
-              <th className="p-3 font-normal w-32">Type</th>
-              <th className="p-3 font-normal">Applicant & Details</th>
-              <th className="p-3 font-normal w-32">Date Submitted</th>
-              <th className="p-3 font-normal w-28">Status</th>
-              <th className="p-3 font-normal w-24 text-right">Actions</th>
+              <th className="p-3 font-normal w-24">{t("th_id")}</th>
+              <th className="p-3 font-normal w-32">{t("th_type")}</th>
+              <th className="p-3 font-normal">{t("th_applicant")}</th>
+              <th className="p-3 font-normal w-32">{t("th_date")}</th>
+              <th className="p-3 font-normal w-28">{t("th_status")}</th>
+              <th className="p-3 font-normal w-24 text-right">{t("th_actions")}</th>
             </tr>
           </thead>
           <tbody className="font-sans text-[13px]">
@@ -853,12 +853,12 @@ const MembersTab = ({ members, showToast, isAdmin, onDeleteMember }: { members: 
           <table className="w-full text-left border-collapse table-fixed">
             <thead>
               <tr className="font-mono text-[9px] uppercase opacity-60 border-b border-line">
-                <th className="p-3 font-normal w-24">Student ID</th>
-                <th className="p-3 font-normal">Name</th>
-                <th className="p-3 font-normal w-24">Role</th>
-                <th className="p-3 font-normal truncate">Department</th>
-                <th className="p-3 font-normal w-32">Join Date</th>
-                <th className="p-3 font-normal w-28 text-right">Actions</th>
+                <th className="p-3 font-normal w-24">{t("th_student_id")}</th>
+                <th className="p-3 font-normal">{t("th_name")}</th>
+                <th className="p-3 font-normal w-24">{t("th_role")}</th>
+                <th className="p-3 font-normal truncate">{t("th_department")}</th>
+                <th className="p-3 font-normal w-32">{t("th_join_date")}</th>
+                <th className="p-3 font-normal w-28 text-right">{t("th_actions")}</th>
               </tr>
             </thead>
             <tbody className="font-sans text-[13px]">
