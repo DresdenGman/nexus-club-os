@@ -24,7 +24,8 @@ const { default: authRoutes } = await import('./routes/auth.js');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+const isProd = process.env.NODE_ENV === 'production';
+app.use(cors(isProd ? { origin: true } : {}));
 app.use(express.json({ limit: '10mb' }));
 app.use('/api/chat', chatRoutes);
 app.use('/api/data', dataRoutes);

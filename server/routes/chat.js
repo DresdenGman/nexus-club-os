@@ -20,6 +20,9 @@ router.post('/', async (req, res) => {
     }
     messages.push({ role: 'user', content: prompt });
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     const response = await fetch(`${AGNES_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -31,7 +34,10 @@ router.post('/', async (req, res) => {
         messages,
         max_tokens: 1024,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errText = await response.text();

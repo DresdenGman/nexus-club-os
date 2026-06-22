@@ -78,7 +78,8 @@ router.post('/signup', async (req, res) => {
       return res.status(500).json({ error: createError.message });
     }
 
-    const { data: profile } = await supabase.from('users').select('*').eq('uid', uid).single();
+    const { data: rawProfile } = await supabase.from('users').select('uid,name,email,role,department,join_date,contribution,avatar,created_at').eq('uid', uid).single();
+    const profile = rawProfile;
     const token = generateToken(uid, cleanEmail);
 
     res.status(201).json({
@@ -104,7 +105,7 @@ router.post('/login', async (req, res) => {
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('*')
+      .select('uid,name,email,role,department,join_date,contribution,avatar,password_hash,created_at')
       .eq('email', cleanEmail)
       .maybeSingle();
 
@@ -146,7 +147,11 @@ router.get('/session', async (req, res) => {
     if (!decoded) return res.json({ user: null, profile: null });
 
     const supabase = getSupabase();
-    const { data: user } = await supabase.from('users').select('*').eq('uid', decoded.uid).maybeSingle();
+    const { data: user } = await supabase
+      .from('users')
+      .select('uid,name,email,role,department,join_date,contribution,avatar,password_hash,created_at')
+      .eq('uid', decoded.uid)
+      .maybeSingle();
     if (!user) return res.json({ user: null, profile: null });
 
     const { password_hash, ...profile } = user;

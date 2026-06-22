@@ -1105,6 +1105,7 @@ function MainApp() {
       }
       await updateApproval(id, { status: 'Approved' });
       setApprovals(prev => prev.map((a: any) => a.id === id ? { ...a, status: 'Approved' } : a));
+      void refreshData();
       showToast('Approved successfully', 'success');
     } catch (error: any) {
       showToast('Error: ' + error.message, 'error');

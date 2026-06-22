@@ -66,7 +66,10 @@ export async function deleteApproval(id) {
 
 // === Users ===
 export async function getUsers() {
-  const { data, error } = await getSupabase().from('users').select('*').order('created_at', { ascending: false });
+  const { data, error } = await getSupabase()
+    .from('users')
+    .select('id,uid,name,email,role,department,join_date,contribution,avatar,created_at')
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
 }

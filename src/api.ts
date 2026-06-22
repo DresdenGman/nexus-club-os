@@ -10,6 +10,16 @@ async function request(path: string, options: RequestInit = {}) {
     headers: { ...headers, ...(options.headers || {}) },
     ...options,
   });
+
+  // Auto-logout on expired token
+  if (res.status === 401 && token) {
+    sessionStorage.removeItem('__auth_token');
+    if (!window.location.pathname.startsWith('/')) {
+      location.reload();
+      throw new Error('Session expired');
+    }
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || err.detail || `HTTP ${res.status}`);
