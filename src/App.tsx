@@ -269,9 +269,12 @@ const AIAssistant = ({ onClose }: { onClose: () => void }) => {
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setLoading(true);
-
-    const response = await askAI(userMsg, "Context: Currently in the Beijing Royal School (BRS) Club Management Platform.");
-    setMessages(prev => [...prev, { role: 'ai', text: response }]);
+    try {
+      const response = await askAI(userMsg, "Context: Currently in the Beijing Royal School (BRS) Club Management Platform.");
+      setMessages(prev => [...prev, { role: 'ai', text: response }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'ai', text: 'SYSTEM ERROR: Failed to connect to AI service.' }]);
+    }
     setLoading(false);
   };
 
@@ -462,7 +465,6 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
   const [newClubType, setNewClubType] = useState('Academic');
   const [newClubDesc, setNewClubDesc] = useState('');
   const [newClubImage, setNewClubImage] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const filteredClubs = clubs.filter((c: any) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 

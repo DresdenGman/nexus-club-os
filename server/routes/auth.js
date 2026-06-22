@@ -34,7 +34,7 @@ function verifyPassword(password, stored) {
 }
 
 function generateToken(uid, email) {
-  const secret = process.env.AUTH_SECRET || crypto.randomBytes(32).toString('hex');
+  const secret = process.env.AUTH_SECRET || 'nexus-club-os-secret-2024';
   const payload = { uid, email, iat: Date.now(), exp: Date.now() + 7 * 24 * 60 * 60 * 1000, jti: crypto.randomUUID() };
   const data = JSON.stringify(payload);
   const hmac = crypto.createHmac('sha256', secret).update(data).digest('hex');

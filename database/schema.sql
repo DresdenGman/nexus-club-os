@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uid TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  email TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
   password_hash TEXT,
   role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'president', 'member')),
   department TEXT,
