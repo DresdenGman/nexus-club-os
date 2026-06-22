@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #E4E3E0;
+  --color-ink: #141414;
+  --color-line: #141414;
+  --color-accent: #FF4400;
+  --font-mono: "Courier New", Courier, monospace;
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-serif: "Georgia", serif;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  background-image: 
+    linear-gradient(to right, rgba(20, 20, 20, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 20, 20, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}

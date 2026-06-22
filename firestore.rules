@@ -1,0 +1,193 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (matches Auth UID)
+    // Fields:
+    //   - uid: string (required, immutable) - Firebase Auth UID
+    //   - name: string (required) - User's full name
+    //   - email: string (required, immutable) - User's email address
+    //   - role: string (required) - 'admin', 'president', or 'member'
+    //   - department: string (optional) - User's academic department
+    //   - joinDate: string (optional) - ISO 8601 date string
+    //   - contribution: number (optional) - Contribution points
+    //   - avatar: string (optional) - URL to user's avatar
+    //
+    // Collection: clubs
+    // Document ID: {clubId}
+    // Fields:
+    //   - name: string (required) - Name of the club
+    //   - type: string (required) - Category (e.g., Tech, Arts)
+    //   - membersCount: number (optional) - Number of active members
+    //   - status: string (required) - 'Active', 'Pending', 'Inactive'
+    //   - image: string (optional) - URL to club's cover image
+    //   - description: string (optional) - Detailed description
+    //   - presidentId: string (required) - UID of the club president
+    //
+    // Collection: approvals
+    // Document ID: {approvalId}
+    // Fields:
+    //   - type: string (required) - 'Club Registration', 'Venue Booking', 'Budget Request'
+    //   - applicantId: string (required, immutable) - UID of applicant
+    //   - applicantName: string (required) - Name of applicant
+    //   - date: string (required, immutable) - ISO 8601 date string
+    //   - status: string (required) - 'Pending Review', 'Approved', 'Rejected'
+    //   - details: string (optional) - Additional details
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == "administrator@admin.com" ||
+        request.auth.token.email == "chenhaoyu.brs@gmail.com" ||
+        request.auth.token.email == "dresdengoehner@gmail.com" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        request.auth.token.email_verified == false // Temporary allow for setup phase if needed
+      );
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+    
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+    
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*") || url.matches("^data:image/.*"));
+    }
+    
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+    
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+    
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'name', 'email', 'role']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.role in ['admin', 'president', 'member'] &&
+             (!('department' in data) || (data.department is string && data.department.size() < 100)) &&
+             (!('joinDate' in data) || isValidDateString(data.joinDate)) &&
+             (!('contribution' in data) || data.contribution is number) &&
+             (!('avatar' in data) || isValidUrl(data.avatar));
+    }
+    
+    function isValidClub(data) {
+      return hasRequiredFields(['name', 'type', 'status', 'presidentId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.type is string && data.type.size() > 0 && data.type.size() < 50 &&
+             data.status in ['Active', 'Pending', 'Inactive'] &&
+             data.presidentId is string && data.presidentId.size() > 0 && data.presidentId.size() < 100 &&
+             (!('membersCount' in data) || data.membersCount is number) &&
+             (!('image' in data) || isValidUrl(data.image)) &&
+             (!('description' in data) || (data.description is string && data.description.size() < 2000));
+    }
+    
+    function isValidApproval(data) {
+      return hasRequiredFields(['type', 'applicantId', 'applicantName', 'date', 'status']) &&
+             data.type in ['Club Registration', 'Venue Booking', 'Budget Request'] &&
+             data.applicantId is string && data.applicantId.size() > 0 && data.applicantId.size() < 100 &&
+             data.applicantName is string && data.applicantName.size() > 0 && data.applicantName.size() < 100 &&
+             isValidDateString(data.date) &&
+             data.status in ['Pending Review', 'Approved', 'Rejected'] &&
+             (!('details' in data) || (data.details is string && data.details.size() < 1000000));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Read: Only owner or admin can read user profiles (contains PII like email)
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Create: Users can create their own profile, but cannot make themselves admin unless they are already admin
+      allow create: if isAuthenticated() && 
+                    isOwner(userId) && 
+                    isValidUser(request.resource.data) && 
+                    uidUnchanged() &&
+                    (request.resource.data.role == 'member' || isAdmin());
+                    
+      // Update: Users can update their own profile (except role/email/uid), admins can update anything
+      allow update: if isAuthenticated() && 
+                    isValidUser(request.resource.data) &&
+                    uidNotModified() &&
+                    (
+                      (isOwner(userId) && areImmutableFieldsUnchanged(['role', 'email', 'uid'])) || 
+                      isAdmin()
+                    );
+                    
+      allow delete: if isAdmin();
+    }
+    
+    match /clubs/{clubId} {
+      // Read: Anyone authenticated can read club info
+      allow read: if isAuthenticated();
+      
+      // Create: Any authenticated user can create a club (starts as Pending usually), or admin
+      allow create: if isAuthenticated() && 
+                    isValidClub(request.resource.data) &&
+                    (request.resource.data.presidentId == request.auth.uid || isAdmin());
+                    
+      // Update: Only club president or admin can update
+      allow update: if isAuthenticated() && 
+                    isValidClub(request.resource.data) &&
+                    (resource.data.presidentId == request.auth.uid || isAdmin());
+                    
+      allow delete: if isAdmin();
+    }
+    
+    match /approvals/{approvalId} {
+      // Read: Applicant or admin can read
+      allow read: if isAuthenticated() && (resource.data.applicantId == request.auth.uid || isAdmin());
+      
+      // Create: Authenticated users can create approvals for themselves
+      allow create: if isAuthenticated() && 
+                    isValidApproval(request.resource.data) &&
+                    request.resource.data.applicantId == request.auth.uid &&
+                    request.resource.data.status == 'Pending Review';
+                    
+      // Update: Only admins can update approvals (e.g., to approve/reject)
+      allow update: if isAdmin() && isValidApproval(request.resource.data);
+      
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,73 @@
+// API client for Nexus Club OS backend
+const API_BASE = 'http://localhost:3001/api';
+
+async function request(path: string, options: RequestInit = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || err.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// ── Data API ──
+
+export async function fetchClubs() {
+  return request('/data/clubs');
+}
+
+export async function createClub(club: Record<string, unknown>) {
+  return request('/data/clubs', { method: 'POST', body: JSON.stringify(club) });
+}
+
+export async function updateClub(id: string, updates: Record<string, unknown>) {
+  return request(`/data/clubs/${id}`, { method: 'PATCH', body: JSON.stringify(updates) });
+}
+
+export async function deleteClub(id: string) {
+  return request(`/data/clubs/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchApprovals(uid?: string) {
+  const qs = uid ? `?uid=${encodeURIComponent(uid)}` : '';
+  return request(`/data/approvals${qs}`);
+}
+
+export async function createApproval(approval: Record<string, unknown>) {
+  return request('/data/approvals', { method: 'POST', body: JSON.stringify(approval) });
+}
+
+export async function updateApproval(id: string, updates: Record<string, unknown>) {
+  return request(`/data/approvals/${id}`, { method: 'PATCH', body: JSON.stringify(updates) });
+}
+
+export async function fetchUsers() {
+  return request('/data/users');
+}
+
+export async function deleteUser(id: string) {
+  return request(`/data/users/${id}`, { method: 'DELETE' });
+}
+
+// ── AI API ──
+
+export async function askAI(prompt: string, context?: string) {
+  const data = await request('/chat', {
+    method: 'POST',
+    body: JSON.stringify({ prompt, context }),
+  });
+  return data.reply;
+}
+
+export async function generateClubDescription(clubName: string, category: string) {
+  const prompt = `Generate a compelling and professional description for a student club named '${clubName}' in the '${category}' category. Keep it under 100 words.`;
+  return askAI(prompt);
+}
+
+export async function fetchModels() {
+  const data = await request('/chat/models');
+  return data.models;
+}
