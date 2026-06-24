@@ -31,8 +31,49 @@ function whitelist(obj, fields) {
 // ===== CLUBS =====
 
 router.get('/clubs', async (_req, res) => {
-  try { const data = await getSupabase().from('clubs').select('*').order('created_at', { ascending: false }); res.json(data.data || data); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    const supabase = getSupabase();
+    const { data: clubs, error } = await supabase.from('clubs').select('*').order('created_at', { ascending: false });
+    if (error) return res.status(400).json({ error: error.message });
+
+    // Batch-fetch president names
+    const presidentIds = [...new Set(clubs.map(c => c.president_id).filter(Boolean))];
+    if (presidentIds.length > 0) {
+      const { data: users } = await supabase.from('users').select('uid,name').in('uid', presidentIds);
+      const nameMap = {};
+      if (users) users.forEach(u => { nameMap[u.uid] = u.name; });
+      clubs.forEach(c => { c.president_name = nameMap[c.president_id] || 'Unknown'; });
+    }
+
+    res.json(clubs);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/data/clubs/:id/members
+router.get('/clubs/:id/members', async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { data: memberships, error } = await supabase
+      .from('memberships')
+      .select('user_id, role, status')
+      .eq('club_id', req.params.id)
+      .eq('status', 'active');
+
+    if (error) return res.status(400).json({ error: error.message });
+    if (!memberships || memberships.length === 0) return res.json([]);
+
+    const userIds = memberships.map(m => m.user_id);
+    const { data: users } = await supabase.from('users').select('uid,name,email,avatar').in('uid', userIds);
+    const userMap = {};
+    if (users) users.forEach(u => { userMap[u.uid] = u; });
+
+    const members = memberships.map(m => ({
+      ...userMap[m.user_id],
+      role: m.role,
+    }));
+
+    res.json(members);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/clubs', requireAuth, async (req, res) => {

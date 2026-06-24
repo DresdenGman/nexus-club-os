@@ -68,6 +68,10 @@ export async function deleteClub(id: string) {
   return request(`/data/clubs/${id}`, { method: 'DELETE' });
 }
 
+export async function fetchClubMembers(clubId: string) {
+  return request(`/data/clubs/${clubId}/members`);
+}
+
 export async function fetchApprovals(uid?: string) {
   const qs = uid ? `?uid=${encodeURIComponent(uid)}` : '';
   return request(`/data/approvals${qs}`);

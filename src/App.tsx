@@ -37,7 +37,7 @@ import {
   fetchClubs, createClub as apiCreateClub, updateClub, deleteClub as apiDeleteClub,
   fetchApprovals, createApproval, updateApproval,
   fetchUsers, deleteUser as apiDeleteUser,
-  askAI, generateClubDescription
+  askAI, generateClubDescription, fetchClubMembers
 } from './api';
 
 // --- i18n Dictionary ---
@@ -465,6 +465,19 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
   const [newClubDesc, setNewClubDesc] = useState('');
   const [newClubImage, setNewClubImage] = useState('');
 
+  const [clubMembers, setClubMembers] = useState<any[]>([]);
+  
+  // Fetch members when a club is selected
+  const handleSelectClub = async (club: any) => {
+    setSelectedClub(club);
+    try {
+      const members = await fetchClubMembers(club.id);
+      setClubMembers(members || []);
+    } catch {
+      setClubMembers([]);
+    }
+  };
+
   const filteredClubs = clubs.filter((c: any) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleRegister = (e: React.FormEvent) => {
@@ -514,6 +527,9 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
                     <div className="font-mono text-[11px] uppercase opacity-60 flex items-center">
                         <Users className="w-4 h-4 mr-2" /> {selectedClub.members_count || selectedClub.members || 1} {t('members_count')}
                     </div>
+                    {selectedClub.president_name && (
+                      <div className="font-mono text-[10px] uppercase opacity-50 mt-1">President: {selectedClub.president_name}</div>
+                    )}
                   </div>
                   <span className="font-mono text-[10px] uppercase border border-line px-3 py-1 bg-ink text-bg">
                     {selectedClub.status}
@@ -581,9 +597,25 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
                   )}
                 </div>
               </div>
-              <div>
+                <div>
                  <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest opacity-60 mb-4">{t('recent_act')}</h3>
-                 <p className="font-mono text-[11px] uppercase opacity-40 italic">Activity feed coming soon</p>
+                 {clubMembers.length > 0 ? (
+                   <ul className="space-y-2 font-mono text-[11px]">
+                     {clubMembers.map((m: any, i: number) => (
+                       <li key={i} className="flex items-center border border-line/20 p-2">
+                         <div className="w-6 h-6 border border-line flex items-center justify-center font-serif text-[10px] mr-2 bg-ink text-bg shrink-0">
+                           {(m.name || '?').charAt(0)}
+                         </div>
+                         <span>{m.name || 'Unknown'}</span>
+                         {m.role === 'president' && (
+                           <span className="ml-auto font-mono text-[8px] uppercase border border-accent text-accent px-1">社长</span>
+                         )}
+                       </li>
+                     ))}
+                   </ul>
+                 ) : (
+                   <p className="font-mono text-[11px] uppercase opacity-40 italic">No members yet</p>
+                 )}
               </div>
             </div>
           </div>
@@ -613,7 +645,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[1px] bg-line border border-line">
         {filteredClubs.map((club: any) => (
-          <div key={club.id} onClick={() => setSelectedClub(club)} className="bg-bg flex flex-col group hover:bg-ink hover:text-bg transition-colors cursor-pointer">
+          <div key={club.id} onClick={() => handleSelectClub(club)} className="bg-bg flex flex-col group hover:bg-ink hover:text-bg transition-colors cursor-pointer">
             <div className="h-32 border-b border-line relative overflow-hidden bg-ink/5 flex items-center justify-center text-ink/20">
               {club.image ? (
                 <img src={club.image} alt={club.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
