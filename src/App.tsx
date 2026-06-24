@@ -476,7 +476,12 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
   const handleSelectClub = async (club: any) => {
     setSelectedClub(club);
     try {
-      const members = await fetchClubMembers(club.id);
+      // Fetch full club data (with image) + members
+      const [fullClub, members] = await Promise.all([
+        fetch(`${location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api'}/data/clubs/${club.id}`).then(r => r.json()),
+        fetchClubMembers(club.id)
+      ]);
+      setSelectedClub(fullClub);
       setClubMembers(members || []);
     } catch {
       setClubMembers([]);
