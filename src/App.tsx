@@ -37,7 +37,7 @@ import {
   fetchClubs, createClub as apiCreateClub, updateClub, deleteClub as apiDeleteClub,
   fetchApprovals, createApproval, updateApproval,
   fetchUsers, deleteUser as apiDeleteUser,
-  askAI, generateClubDescription, fetchClubMembers, fetchMyMemberships
+  askAI, generateClubDescription, fetchClubMembers, fetchMyMemberships, applyToClub, approveMembership, fetchPendingApplications
 } from './api';
 
 // --- i18n Dictionary ---
@@ -573,6 +573,22 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
                      )}
                    </div>
                 )}
+
+                {!isAdmin && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await applyToClub(selectedClub.id);
+                        showToast('Application submitted!', 'success');
+                      } catch (e: any) {
+                        showToast(e.message, 'error');
+                      }
+                    }}
+                    className="mb-6 font-mono text-[10px] uppercase bg-ink text-bg px-6 py-3 border border-line hover:bg-accent transition-colors font-bold"
+                  >
+                    Apply to Join
+                  </button>
+                )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 pt-8 border-t border-line">
               <div>
@@ -949,14 +965,21 @@ const MembersTab = ({ members, showToast, isAdmin, onDeleteMember }: { members: 
 const MyClubsTab = ({ clubs }: { clubs: any[] }) => {
   const { t } = useTranslation();
   const [myClubs, setMyClubs] = useState<any[]>([]);
+  const [pendingApps, setPendingApps] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMyMemberships().then(data => {
-      setMyClubs(data || []);
+    Promise.all([
+      fetchMyMemberships(),
+      ...clubs.map(c => fetchPendingApplications(c.id).catch(() => []))
+    ]).then(([memberships, ...pendings]) => {
+      setMyClubs(memberships || []);
+      const apps: Record<string, any[]> = {};
+      clubs.forEach((c, i) => { if (pendings[i]?.length) apps[c.id] = pendings[i]; });
+      setPendingApps(apps);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  }, [clubs]);
 
   if (loading) return <div className="font-mono text-[11px] uppercase opacity-60 p-8">{t('ai_thinking')}</div>;
 
@@ -985,6 +1008,36 @@ const MyClubsTab = ({ clubs }: { clubs: any[] }) => {
           ))
         )}
       </div>
+      {Object.entries(pendingApps).map(([clubId, applications]) => {
+        const club = myClubs.find(c => c.id === clubId);
+        if (!club || club.my_role !== 'president') return null;
+        return (
+          <div key={clubId} className="border border-line bg-bg p-6 mt-4">
+            <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest opacity-60 mb-4">
+              Pending — {club.name}
+            </h3>
+            <div className="space-y-2">
+              {applications.map((app: any) => (
+                <div key={app.id} className="flex items-center justify-between border border-line/20 p-3">
+                  <span className="font-mono text-[11px]">{app.applicant_name}</span>
+                  <div className="flex space-x-2">
+                    <button onClick={async () => {
+                      await approveMembership(app.id, 'active');
+                      showToast('Approved', 'success');
+                      setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
+                    }} className="font-mono text-[9px] uppercase bg-ink text-bg px-3 py-1 hover:bg-accent">Approve</button>
+                    <button onClick={async () => {
+                      await approveMembership(app.id, 'rejected');
+                      showToast('Rejected', 'success');
+                      setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
+                    }} className="font-mono text-[9px] uppercase border border-line px-3 py-1 hover:bg-accent hover:text-bg">Reject</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

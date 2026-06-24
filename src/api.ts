@@ -72,6 +72,18 @@ export async function fetchMyMemberships() {
   return request('/data/memberships/my');
 }
 
+export async function applyToClub(clubId: string) {
+  return request('/data/memberships', { method: 'POST', body: JSON.stringify({ club_id: clubId }) });
+}
+
+export async function approveMembership(id: string, status: 'active' | 'rejected') {
+  return request(`/data/memberships/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+}
+
+export async function fetchPendingApplications(clubId: string) {
+  return request(`/data/clubs/${clubId}/pending`);
+}
+
 export async function fetchClubMembers(clubId: string) {
   return request(`/data/clubs/${clubId}/members`);
 }
