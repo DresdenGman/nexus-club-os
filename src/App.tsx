@@ -589,6 +589,37 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
                     Apply to Join
                   </button>
                 )}
+
+                <div className="mb-6">
+                  <label className="font-mono text-[9px] uppercase bg-ink text-bg px-3 py-2 border border-line hover:bg-accent transition-colors cursor-pointer inline-flex items-center">
+                    <Upload className="w-3 h-3 mr-2" />
+                    Change Background
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        try {
+                          const token = sessionStorage.getItem('__auth_token');
+                          const res = await fetch(`/api/upload/club/${selectedClub.id}`, {
+                            method: 'POST',
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            body: formData,
+                          });
+                          if (res.ok) {
+                            const d = await res.json();
+                            setSelectedClub({ ...selectedClub, image: d.image_url });
+                            showToast('Background updated!', 'success');
+                          } else {
+                            const d = await res.json();
+                            showToast(d.error || 'Upload failed', 'error');
+                          }
+                        } catch { showToast('Upload failed', 'error'); }
+                      }}
+                    />
+                  </label>
+                </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 pt-8 border-t border-line">
               <div>

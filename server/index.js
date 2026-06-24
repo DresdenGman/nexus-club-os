@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
+import multer from 'multer';
 
 // MUST load .env BEFORE any imports that read process.env
 import dotenv from 'dotenv';
@@ -21,6 +23,13 @@ const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
 app.use(cors(isProd ? {} : {}));
 app.use(express.json({ limit: '10mb' }));
+
+// File upload
+const uploadDir = path.join(__dirname, '..', 'uploads');
+import fs from 'fs';
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const upload = multer({ dest: uploadDir, limits: { fileSize: 5 * 1024 * 1024 } });
+app.use('/uploads', express.static(uploadDir));
 
 // Request logging (reads statusCode after response is sent)
 app.use((req, res, next) => {
@@ -73,6 +82,37 @@ app.post('/api/admin/purge', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Upload club image
+app.post('/api/upload/club/:id', upload.single('image'), async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const { verifyToken } = await import('./routes/auth.js');
+    const decoded = verifyToken(token || '');
+    if (!decoded) return res.status(401).json({ error: 'Auth required' });
+
+    if (!req.file) return res.status(400).json({ error: 'No image file' });
+
+    const { getSupabase } = await import('./db.js');
+    const supabase = getSupabase();
+
+    // Verify user is president of this club or admin
+    const { data: membership } = await supabase.from('memberships')
+      .select('role').eq('user_id', decoded.uid).eq('club_id', req.params.id).maybeSingle();
+    const { data: profile } = await supabase.from('users').select('role').eq('uid', decoded.uid).single();
+    
+    if (!membership || (membership.role !== 'president' && profile?.role !== 'admin')) {
+      return res.status(403).json({ error: 'Only president or admin can update' });
+    }
+
+    const imageUrl = `/uploads/${req.file.filename}`;
+    await supabase.from('clubs').update({ image: imageUrl }).eq('id', req.params.id);
+    
+    res.json({ success: true, image_url: imageUrl });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Production: serve built frontend
