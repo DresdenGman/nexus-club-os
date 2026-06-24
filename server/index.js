@@ -20,7 +20,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 const isProd = process.env.NODE_ENV === 'production';
-app.use(cors(isProd ? {} : {}));
+app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // File upload

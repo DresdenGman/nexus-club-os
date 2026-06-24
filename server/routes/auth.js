@@ -97,9 +97,14 @@ router.post('/signup', async (req, res) => {
     });
     if (createError) return res.status(500).json({ error: createError.message });
 
-    const { data: profile } = await supabase.from('users')
+    const { data: profile, error: profileError } = await supabase.from('users')
       .select('uid,name,email,role,department,join_date,contribution,avatar,created_at')
       .eq('uid', uid).maybeSingle();
+    if (profileError || !profile) {
+      // Rollback: delete the created user
+      await supabase.from('users').delete().eq('uid', uid).maybeSingle();
+      return res.status(500).json({ error: 'Failed to create profile' });
+    }
     const token = generateToken(uid, cleanEmail);
     res.status(201).json({
       user: { uid, email: cleanEmail, displayName: name || cleanEmail.split('@')[0] },

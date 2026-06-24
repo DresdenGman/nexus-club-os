@@ -18,7 +18,7 @@ function requireAuth(req, res, next) {
 // Field whitelists to prevent mass assignment
 const CLUB_FIELDS = ['name', 'type', 'president_id', 'members_count', 'image', 'description'];
 const APPROVAL_FIELDS = ['type', 'details'];
-const CLUB_UPDATE_FIELDS = ['name', 'type', 'image', 'description'];
+const CLUB_UPDATE_FIELDS = ['name', 'type', 'status', 'image', 'description'];
 
 function whitelist(obj, fields) {
   const result = {};
@@ -71,6 +71,11 @@ router.post('/memberships', requireAuth, async (req, res) => {
     const { club_id } = req.body;
     if (!club_id) return res.status(400).json({ error: 'club_id required' });
     const supabase = getSupabase();
+
+    // Verify club exists
+    const { data: club } = await supabase.from('clubs').select('id').eq('id', club_id).maybeSingle();
+    if (!club) return res.status(404).json({ error: 'Club not found' });
+
     const { data: existing } = await supabase.from('memberships')
       .select('id,status').eq('user_id', req.user.uid).eq('club_id', club_id).maybeSingle();
     if (existing) {
@@ -100,12 +105,12 @@ router.patch('/memberships/:id', requireAuth, async (req, res) => {
     const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (!president && profile?.role !== 'admin') return res.status(403).json({ error: 'Only president or admin' });
     const { data, error } = await supabase.from('memberships').update({ status }).eq('id', req.params.id).eq('status', 'pending').select().maybeSingle();
+    if (error) return res.status(400).json({ error: error.message });
     if (!data) return res.status(400).json({ error: 'Application is no longer pending — may have already been processed' });
     if (status === 'active') {
       const { data: club } = await supabase.from('clubs').select('members_count').eq('id', membership.club_id).maybeSingle();
       if (club) await supabase.from('clubs').update({ members_count: (club.members_count || 0) + 1 }).eq('id', membership.club_id);
     }
-    if (error) return res.status(400).json({ error: error.message });
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -114,6 +119,15 @@ router.patch('/memberships/:id', requireAuth, async (req, res) => {
 router.get('/clubs/:id/pending', requireAuth, async (req, res) => {
   try {
     const supabase = getSupabase();
+    // Verify club exists and user is president or admin
+    const { data: club } = await supabase.from('clubs').select('id').eq('id', req.params.id).maybeSingle();
+    if (!club) return res.status(404).json({ error: 'Club not found' });
+
+    const { data: president } = await supabase.from('memberships')
+      .select('id').eq('user_id', req.user.uid).eq('club_id', req.params.id).eq('role', 'president').maybeSingle();
+    const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
+    if (!president && profile?.role !== 'admin') return res.status(403).json({ error: 'Only president or admin' });
+
     const { data, error } = await supabase.from('memberships')
       .select('id,user_id,role,status,created_at')
       .eq('club_id', req.params.id)
@@ -188,7 +202,8 @@ router.get('/clubs/:id/members', async (req, res) => {
 router.post('/clubs', requireAuth, async (req, res) => {
   try {
     const clean = whitelist(req.body, CLUB_FIELDS);
-    clean.status = 'Active'; // Clubs created via API are active immediately
+    if (!clean.name || !clean.name.trim()) return res.status(400).json({ error: 'Club name is required' });
+    clean.status = 'Active';
     if (!clean.president_id) clean.president_id = req.user.uid;
     if (clean.president_id !== req.user.uid) {
       const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
@@ -201,12 +216,13 @@ router.post('/clubs', requireAuth, async (req, res) => {
 
     // Auto-create president membership
     if (data) {
-      await getSupabase().from('memberships').insert({
+      const { error: mErr } = await getSupabase().from('memberships').insert({
         user_id: clean.president_id,
         club_id: data.id,
         role: 'president',
         status: 'active',
       });
+      if (mErr) console.error('Failed to create president membership:', mErr.message);
     }
 
     res.status(201).json(data);
@@ -233,8 +249,9 @@ router.patch('/clubs/:id', requireAuth, async (req, res) => {
 router.delete('/clubs/:id', requireAuth, async (req, res) => {
   try {
     const { data: club } = await getSupabase().from('clubs').select('president_id').eq('id', req.params.id).maybeSingle();
+    if (!club) return res.status(404).json({ error: 'Club not found' });
     const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
-    if (!club || (club.president_id !== req.user.uid && profile?.role !== 'admin')) {
+    if (club.president_id !== req.user.uid && profile?.role !== 'admin') {
       return res.status(403).json({ error: 'Permission denied' });
     }
     // Cascade: delete memberships first
