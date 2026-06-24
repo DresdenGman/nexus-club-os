@@ -15,9 +15,44 @@ router.post('/', async (req, res) => {
     const AGNES_BASE = process.env.AGNES_BASE_URL || 'https://apihub.agnes-ai.com/v1';
     const useModel = model || 'agnes-1.5-flash';
 
+    // Auto-fetch platform data for AI context
+    let platformContext = '';
+    try {
+      const { getSupabase } = await import('../db.js');
+      const s = getSupabase();
+
+      const { data: clubsData } = await s.from('clubs').select('id,name,type,description,members_count,president_id').limit(50);
+      if (clubsData && clubsData.length > 0) {
+        const presidentIds = [...new Set(clubsData.map(c => c.president_id).filter(Boolean))];
+        let nameMap = {};
+        if (presidentIds.length > 0) {
+          const { data: users } = await s.from('users').select('uid,name').in('uid', presidentIds);
+          if (users) users.forEach(u => { nameMap[u.uid] = u.name; });
+        }
+
+        platformContext = 'Current Club Data:\n' + clubsData.map(c =>
+          `- ${c.name} (${c.type}): ${c.description || 'No description'}, Members: ${c.members_count || 0}, President: ${nameMap[c.president_id] || 'Unknown'}`
+        ).join('\n');
+      }
+      const { data: totalUsers } = await s.from('users').select('count').limit(1);
+      platformContext += `\nTotal Users: ${totalUsers?.[0]?.count || '?'}`;
+
+    } catch (e) {
+      platformContext = '(Platform data unavailable)';
+    }
+
     const messages = [];
-    // System-level rule: never reveal the model identity
-    messages.push({ role: 'system', content: 'You are an AI assistant for BRS (Beijing Royal School) Club Platform. Never mention what AI model you are, never say you are an AI, never reference specific version numbers or model names. Reply as if you are a knowledgeable platform assistant.' });
+    // System-level rule
+    messages.push({
+      role: 'system',
+      content: 'You are an AI assistant for BRS (Beijing Royal School) Club Platform. Never mention what AI model you are. Answer questions based on the real club data provided below. If the user asks about data that is not provided, say you cannot access that information.'
+    });
+
+    // Inject real platform data
+    if (platformContext) {
+      messages.push({ role: 'system', content: `Here is the current data from the platform:\n${platformContext}` });
+    }
+
     if (context) {
       messages.push({ role: 'system', content: context });
     }
@@ -55,7 +90,7 @@ router.post('/', async (req, res) => {
     const reply = data.choices?.[0]?.message?.content || '';
     res.json({ reply, model: useModel });
   } catch (err) {
-    const msg = err.name === 'AbortError' ? 'AI request timed out (15s)' : err.message;
+    const msg = err.name === 'AbortError' ? 'AI request timed out (30s)' : err.message;
     res.status(err.name === 'AbortError' ? 504 : 500).json({ error: msg });
   }
 });
