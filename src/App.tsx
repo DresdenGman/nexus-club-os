@@ -1462,13 +1462,13 @@ const handleSystemPurge = async () => {
   
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-  return () => clearInterval(timer);
     return () => clearInterval(timer);
   }, []);
 
   const formatTime = (date: Date) => {
     const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} // ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    const beijing = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+    return `${beijing.getUTCFullYear()}.${pad(beijing.getUTCMonth() + 1)}.${pad(beijing.getUTCDate())} // ${pad(beijing.getUTCHours())}:${pad(beijing.getUTCMinutes())}:${pad(beijing.getUTCSeconds())}`;
   };
 
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
