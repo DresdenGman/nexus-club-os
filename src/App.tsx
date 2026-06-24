@@ -473,10 +473,12 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
   const [clubMembers, setClubMembers] = useState<any[]>([]);
   
   // Fetch members when a club is selected
+  // Fetch members when a club is selected
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const handleSelectClub = async (club: any) => {
     setSelectedClub(club);
+    setLoadingDetail(true);
     try {
-      // Fetch full club data (with image) + members
       const [fullClub, members] = await Promise.all([
         fetch(`${location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api'}/data/clubs/${club.id}`).then(r => r.json()),
         fetchClubMembers(club.id)
@@ -486,6 +488,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
     } catch {
       setClubMembers([]);
     }
+    setLoadingDetail(false);
   };
 
   const filteredClubs = clubs.filter((c: any) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -832,7 +835,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
                 </div>
               </div>
               <div className="flex space-x-4 pt-4 border-t border-line">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 font-mono text-[10px] uppercase font-bold py-2 border border-line hover:bg-ink hover:text-bg transition-colors">
+                <button type="button" onClick={() => { setShowModal(false); setNewClubImage(''); }} className="flex-1 font-mono text-[10px] uppercase font-bold py-2 border border-line hover:bg-ink hover:text-bg transition-colors">
                   {t('cancel')}
                 </button>
                 <button type="submit" className="flex-1 font-mono text-[10px] uppercase font-bold py-2 bg-ink text-bg hover:bg-accent transition-colors">
