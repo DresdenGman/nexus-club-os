@@ -335,7 +335,7 @@ const AIAssistant = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-const DashboardTab = ({ clubs, approvals }: { clubs: any[], approvals: any[] }) => {
+const DashboardTab = ({ clubs, approvals, lang }: { clubs: any[], approvals: any[], lang: Lang }) => {
   const { t } = useTranslation();
   const [insight, setInsight] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -360,10 +360,13 @@ const DashboardTab = ({ clubs, approvals }: { clubs: any[], approvals: any[] }) 
       const statsSummary = `\n        System Stats:\n        - Total Clubs: ${totalClubs}\n        - Total Members: ${totalMembers}\n        - Pending Approvals: ${pendingApps}\n        - Categories: ${JSON.stringify(typeCount)}\n      `;
 
       if (totalClubs === 0 && pendingApps === 0) {
-        setInsight("System core is purged. Awaiting initial organizational registration requests to begin analysis.");
+        setInsight(lang === 'zh' ? '系统尚未录入任何社团数据。期待首批组织入驻，开启校园社团管理新时代。' : 'No clubs registered yet. Looking forward to the first wave of student organizations joining the platform.');
       } else {
         try {
-          const prompt = `Based on these real-time high school club statistics from Beijing Royal School, generate a single-sentence professional administrative insight. Do not invent data outside of what is provided. ${statsSummary}`;
+          const langPrompt = lang === 'zh'
+            ? '请用中文回复。语气积极、鼓舞人心。'
+            : 'Reply in English. Use a positive, encouraging tone.';
+          const prompt = `Based on these real-time high school club statistics from Beijing Royal School, generate a single-sentence positive and encouraging administrative insight. Highlight growth, diversity, or student engagement. ${langPrompt} Do not invent data outside of what is provided. ${statsSummary}`;
           const result = await askAI(prompt);
           setInsight(result);
         } catch (e) { /* ignore */ }
@@ -1634,7 +1637,7 @@ function MainApp() {
 
         <main className="flex-1 overflow-auto p-6">
           <div className="max-w-6xl mx-auto">
-            {activeTab === 'dashboard' && <DashboardTab clubs={clubs} approvals={approvals} />}
+            {activeTab === 'dashboard' && <DashboardTab clubs={clubs} approvals={approvals} lang={lang} />}
             {activeTab === 'clubs' && <ClubsTab clubs={clubs} addApproval={handleAddApproval} showToast={showToast} isAdmin={isAdmin} onDeleteClub={handleDeleteClub} />}
             {activeTab === 'approvals' && <ApprovalsTab approvals={approvals} onApprove={handleApprove} onReject={handleReject} isAdmin={isAdmin} />}
             {activeTab === 'members' && <MembersTab members={members} showToast={showToast} isAdmin={isAdmin} onDeleteMember={handleDeleteMember} />}
