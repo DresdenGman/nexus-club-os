@@ -366,8 +366,8 @@ const DashboardTab = ({ clubs, approvals, lang }: { clubs: any[], approvals: any
       } else {
         try {
           const langPrompt = lang === 'zh'
-            ? '请用中文回复。语气积极、鼓舞人心。'
-            : 'Reply in English. Use a positive, encouraging tone.';
+            ? '请用中文回复。学校名称是"北京王府学校"(Beijing Royal School)，不要翻译成别的名字。语气积极、鼓舞人心。'
+            : 'Reply in English. School is Beijing Royal School. Use a positive, encouraging tone.';
           const prompt = `Based on these real-time high school club statistics from Beijing Royal School, generate a single-sentence positive and encouraging administrative insight. Highlight growth, diversity, or student engagement. ${langPrompt} Do not invent data outside of what is provided. ${statsSummary}`;
           const result = await askAI(prompt);
           setInsight(result);
