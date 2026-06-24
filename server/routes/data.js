@@ -49,6 +49,33 @@ router.get('/clubs', async (_req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/data/memberships/my
+router.get('/memberships/my', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { data: memberships, error } = await supabase
+      .from('memberships')
+      .select('club_id, role, status')
+      .eq('user_id', req.user.uid)
+      .eq('status', 'active');
+
+    if (error) return res.status(400).json({ error: error.message });
+    if (!memberships || memberships.length === 0) return res.json([]);
+
+    const clubIds = memberships.map(m => m.club_id);
+    const { data: clubs } = await supabase.from('clubs').select('id,name,type,members_count,description').in('id', clubIds);
+    const clubMap = {};
+    if (clubs) clubs.forEach(c => { clubMap[c.id] = c; });
+
+    const result = memberships.map(m => ({
+      ...clubMap[m.club_id],
+      my_role: m.role,
+    })).filter(m => m.id);
+
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/data/clubs/:id/members
 router.get('/clubs/:id/members', async (req, res) => {
   try {

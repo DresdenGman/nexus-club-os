@@ -37,7 +37,7 @@ import {
   fetchClubs, createClub as apiCreateClub, updateClub, deleteClub as apiDeleteClub,
   fetchApprovals, createApproval, updateApproval,
   fetchUsers, deleteUser as apiDeleteUser,
-  askAI, generateClubDescription, fetchClubMembers
+  askAI, generateClubDescription, fetchClubMembers, fetchMyMemberships
 } from './api';
 
 // --- i18n Dictionary ---
@@ -83,6 +83,7 @@ const dict = {
     submit_res: 'Submit Reservation Request',
     upload_forms: 'Upload Completed Forms',
     back_to_dir: 'Back to Directory',
+    my_clubs: 'My Clubs',
     about_club: 'About this Club',
     recent_act: 'Recent Activities',
     req_submitted: 'Request Submitted to Admin',
@@ -176,6 +177,7 @@ const dict = {
     submit_res: '提交预约申请',
     upload_forms: '上传已填写的表格',
     back_to_dir: '返回社团目录',
+    my_clubs: '我的社团',
     about_club: '关于本社团',
     recent_act: '近期活动',
     req_submitted: '请求已提交给管理员',
@@ -944,6 +946,49 @@ const MembersTab = ({ members, showToast, isAdmin, onDeleteMember }: { members: 
   );
 };
 
+const MyClubsTab = ({ clubs }: { clubs: any[] }) => {
+  const { t } = useTranslation();
+  const [myClubs, setMyClubs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMyMemberships().then(data => {
+      setMyClubs(data || []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="font-mono text-[11px] uppercase opacity-60 p-8">{t('ai_thinking')}</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[1px] bg-line border border-line">
+        {myClubs.length === 0 ? (
+          <div className="col-span-3 p-12 text-center font-mono text-[11px] uppercase opacity-50">
+            Not a member of any clubs yet. Browse the Club Directory to join.
+          </div>
+        ) : (
+          myClubs.map((club: any) => (
+            <div key={club.id} className="bg-bg p-6 flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-serif italic text-lg">{club.name}</h3>
+                <span className={`font-mono text-[9px] uppercase border px-2 py-0.5 ${club.my_role === 'president' ? 'border-accent text-accent bg-accent/5' : 'border-line'}`}>
+                  {club.my_role === 'president' ? '社长' : t('members')}
+                </span>
+              </div>
+              <div className="font-mono text-[10px] uppercase opacity-60 mb-4">{club.type}</div>
+              <div className="font-sans text-[13px] opacity-70 mb-4 flex-1">{club.description?.slice(0, 80) || ''}</div>
+              <div className="font-mono text-[9px] uppercase border-t border-line pt-3 opacity-50">
+                {club.members_count || 1} {t('members_count')}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ResourcesTab = ({ addApproval, showToast, userName }: { addApproval: (type: string, applicant: string) => void, showToast: (msg: string, type?: 'success'|'info'|'error') => void, userName: string }) => {
   const { t } = useTranslation();
   
@@ -1402,6 +1447,7 @@ function MainApp() {
     { id: 'clubs', label: t('club_directory'), icon: Users },
     { id: 'approvals', label: t('approvals'), icon: CheckCircle },
     { id: 'members', label: t('members'), icon: Users },
+    { id: 'myclubs', label: t('my_clubs'), icon: Award },
     { id: 'resources', label: t('resources'), icon: Calendar },
   ];
 
@@ -1500,6 +1546,7 @@ function MainApp() {
             {activeTab === 'clubs' && <ClubsTab clubs={clubs} addApproval={handleAddApproval} showToast={showToast} isAdmin={isAdmin} onDeleteClub={handleDeleteClub} />}
             {activeTab === 'approvals' && <ApprovalsTab approvals={approvals} onApprove={handleApprove} onReject={handleReject} isAdmin={isAdmin} />}
             {activeTab === 'members' && <MembersTab members={members} showToast={showToast} isAdmin={isAdmin} onDeleteMember={handleDeleteMember} />}
+            {activeTab === 'myclubs' && <MyClubsTab clubs={clubs} />}
             {activeTab === 'resources' && <ResourcesTab addApproval={handleAddApproval} showToast={showToast} userName={profile.name} />}
           </div>
         </main>
