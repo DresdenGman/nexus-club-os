@@ -962,7 +962,7 @@ const MembersTab = ({ members, showToast, isAdmin, onDeleteMember }: { members: 
   );
 };
 
-const MyClubsTab = ({ clubs }: { clubs: any[] }) => {
+const MyClubsTab = ({ clubs, isAdmin, showToast }: { clubs: any[], isAdmin: boolean, showToast: (msg: string, type?: string) => void }) => {
   const { t } = useTranslation();
   const [myClubs, setMyClubs] = useState<any[]>([]);
   const [pendingApps, setPendingApps] = useState<Record<string, any[]>>({});
@@ -1009,29 +1009,35 @@ const MyClubsTab = ({ clubs }: { clubs: any[] }) => {
         )}
       </div>
       {Object.entries(pendingApps).map(([clubId, applications]) => {
-        const club = myClubs.find(c => c.id === clubId);
-        if (!club || club.my_role !== 'president') return null;
+        const club = clubs.find(c => c.id === clubId);
+        const isPresident = myClubs.find(c => c.id === clubId)?.my_role === 'president';
+        if (!club) return null;
+        if (!isPresident && !isAdmin) return null;
         return (
-          <div key={clubId} className="border border-line bg-bg p-6 mt-4">
+          <div key={clubId} className="border border-line bg-bg p-6">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest opacity-60 mb-4">
-              Pending — {club.name}
+              Pending — {club.name} {isAdmin && !isPresident && '(Admin View)'}
             </h3>
             <div className="space-y-2">
               {applications.map((app: any) => (
                 <div key={app.id} className="flex items-center justify-between border border-line/20 p-3">
                   <span className="font-mono text-[11px]">{app.applicant_name}</span>
-                  <div className="flex space-x-2">
-                    <button onClick={async () => {
-                      await approveMembership(app.id, 'active');
-                      showToast('Approved', 'success');
-                      setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
-                    }} className="font-mono text-[9px] uppercase bg-ink text-bg px-3 py-1 hover:bg-accent">Approve</button>
-                    <button onClick={async () => {
-                      await approveMembership(app.id, 'rejected');
-                      showToast('Rejected', 'success');
-                      setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
-                    }} className="font-mono text-[9px] uppercase border border-line px-3 py-1 hover:bg-accent hover:text-bg">Reject</button>
-                  </div>
+                  {isPresident ? (
+                    <div className="flex space-x-2">
+                      <button onClick={async () => {
+                        await approveMembership(app.id, 'active');
+                        showToast('Approved', 'success');
+                        setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
+                      }} className="font-mono text-[9px] uppercase bg-ink text-bg px-3 py-1 hover:bg-accent">Approve</button>
+                      <button onClick={async () => {
+                        await approveMembership(app.id, 'rejected');
+                        showToast('Rejected', 'success');
+                        setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
+                      }} className="font-mono text-[9px] uppercase border border-line px-3 py-1 hover:bg-accent hover:text-bg">Reject</button>
+                    </div>
+                  ) : (
+                    <span className="font-mono text-[9px] uppercase opacity-50">Pending Review</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -1599,7 +1605,7 @@ function MainApp() {
             {activeTab === 'clubs' && <ClubsTab clubs={clubs} addApproval={handleAddApproval} showToast={showToast} isAdmin={isAdmin} onDeleteClub={handleDeleteClub} />}
             {activeTab === 'approvals' && <ApprovalsTab approvals={approvals} onApprove={handleApprove} onReject={handleReject} isAdmin={isAdmin} />}
             {activeTab === 'members' && <MembersTab members={members} showToast={showToast} isAdmin={isAdmin} onDeleteMember={handleDeleteMember} />}
-            {activeTab === 'myclubs' && <MyClubsTab clubs={clubs} />}
+            {activeTab === 'myclubs' && <MyClubsTab clubs={clubs} isAdmin={isAdmin} showToast={showToast} />}
             {activeTab === 'resources' && <ResourcesTab addApproval={handleAddApproval} showToast={showToast} userName={profile.name} />}
           </div>
         </main>
