@@ -705,7 +705,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
           <div key={club.id} onClick={() => handleSelectClub(club)} className="bg-bg flex flex-col group hover:bg-ink hover:text-bg transition-colors cursor-pointer">
             <div className="h-32 border-b border-line relative overflow-hidden bg-ink/5 flex items-center justify-center text-ink/20">
               {club.image ? (
-                <img src={club.image} alt={club.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                <img src={club.image} alt={club.name} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-all duration-500" />
               ) : (
                 <Users className="w-12 h-12 opacity-50" />
               )}
