@@ -54,7 +54,6 @@ const dict = {
     password: 'Password',
     login_btn: 'Log In',
     signup_btn: 'Sign Up',
-    google_btn: 'Authenticate via Google',
     switch_signup: 'Need an account? Sign Up',
     switch_login: 'Already have an account? Log In',
     admin_user: 'Admin User',
@@ -148,7 +147,6 @@ const dict = {
     password: '密码',
     login_btn: '登 录',
     signup_btn: '注 册',
-    google_btn: '通过 Google 进行认证',
     switch_signup: '还没有账号？点击注册',
     switch_login: '已有账号？点击登录',
     admin_user: '管理员',
@@ -347,33 +345,31 @@ const DashboardTab = ({ clubs, approvals }: { clubs: any[], approvals: any[] }) 
     return acc;
   }, {});
 
-  // Generate Insight based on real data
+  // Generate Insight based on real data (2s debounce)
   useEffect(() => {
-    const generateInsight = async () => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
       setIsGenerating(true);
       const totalClubs = clubs.length;
       const totalMembers = clubs.reduce((acc, c) => acc + (Number(c.members_count) || 1), 0);
       const pendingApps = approvals.filter(a => a.status === 'Pending Review').length;
       
-      const statsSummary = `
-        System Stats:
-        - Total Clubs: ${totalClubs}
-        - Total Members: ${totalMembers}
-        - Pending Approvals: ${pendingApps}
-        - Categories: ${JSON.stringify(typeCount)}
-      `;
+      const statsSummary = `\n        System Stats:\n        - Total Clubs: ${totalClubs}\n        - Total Members: ${totalMembers}\n        - Pending Approvals: ${pendingApps}\n        - Categories: ${JSON.stringify(typeCount)}\n      `;
 
       if (totalClubs === 0 && pendingApps === 0) {
         setInsight("System core is purged. Awaiting initial organizational registration requests to begin analysis.");
       } else {
-        const prompt = `Based on these real-time high school club statistics from Beijing Royal School, generate a single-sentence professional administrative insight. Do not invent data outside of what is provided. ${statsSummary}`;
-        const result = await askAI(prompt);
-        setInsight(result);
+        try {
+          const prompt = `Based on these real-time high school club statistics from Beijing Royal School, generate a single-sentence professional administrative insight. Do not invent data outside of what is provided. ${statsSummary}`;
+          const result = await askAI(prompt);
+          setInsight(result);
+        } catch (e) { /* ignore */ }
       }
-      setIsGenerating(false);
-    };
+      if (!cancelled) setIsGenerating(false);
+    }, 2000);
 
-    generateInsight();
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [clubs, approvals]);
   
   const dynamicClubTypesData = Object.keys(typeCount).map(key => ({
@@ -708,7 +704,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
             <div className="p-4">
               <h3 className="font-serif italic text-lg mb-2">{club.name}</h3>
               <div className="font-mono text-[10px] uppercase opacity-60 mb-4 flex items-center">
-                <Users className="w-3 h-3 mr-1" /> {club.members_count || club.members || 1} {t('members_count')}
+                <Users className="w-3 h-3 mr-1" /> {club.members_count || 0} {t('members_count')}
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-mono text-[9px] uppercase border border-line px-1.5 py-0.5 group-hover:border-bg">
@@ -906,8 +902,8 @@ const ApprovalsTab = ({ approvals, onApprove, onReject, isAdmin }: { approvals: 
                         </button>
                       </div>
                     ) : (
-                      <span className="font-mono text-[9px] opacity-60 flex items-center font-bold tracking-widest text-[#FF4400]">
-                        <XCircle className="w-3 h-3 mr-1" /> ADMIN REQ
+                      <span className="font-mono text-[9px] opacity-60 font-bold tracking-widest">
+                        PENDING
                       </span>
                     )
                   ) : (
@@ -965,7 +961,7 @@ const MembersTab = ({ members, showToast, isAdmin, onDeleteMember }: { members: 
                       {isAdmin && (
                         deletingId === member.id ? (
                           <div className="flex items-center space-x-2">
-                            <button onClick={() => { onDeleteMember(member.id); setDeletingId(null); }} className="font-mono text-[9px] uppercase bg-accent text-bg px-2 py-0.5 font-bold">Conf</button>
+                            <button onClick={() => { onDeleteMember(member.uid); setDeletingId(null); }} className="font-mono text-[9px] uppercase bg-accent text-bg px-2 py-0.5 font-bold">Conf</button>
                             <button onClick={() => setDeletingId(null)} className="font-mono text-[9px] uppercase bg-ink text-bg px-2 py-0.5">X</button>
                           </div>
                         ) : (
@@ -1010,7 +1006,7 @@ const MyClubsTab = ({ clubs, isAdmin, showToast }: { clubs: any[], isAdmin: bool
       setPendingApps(apps);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [clubs]);
+  }, []); // Only fetch on mount (user doesn't change during session)
 
   if (loading) return <div className="font-mono text-[11px] uppercase opacity-60 p-8">{t('ai_thinking')}</div>;
 
@@ -1272,11 +1268,12 @@ function MainApp() {
       const users = await fetchUsers();
       for (const u of users) {
         if (u.uid !== user?.uid) {
-          await apiDeleteUser(u.id);
+          await apiDeleteUser(u.uid);
         }
       }
 
       showToast("SYSTEM PURGED: ALL DATA ERASED", "success");
+      void refreshData();
     } catch (error) {
       console.error("Purge Error", error);
       showToast("PURGE FAILED: CHECK PERMISSIONS", "error");
@@ -1295,10 +1292,10 @@ function MainApp() {
     }
   };
 
-  const handleDeleteMember = async (id: string) => {
+  const handleDeleteMember = async (uid: string) => {
     try {
-      await apiDeleteUser(id);
-      setMembers(prev => prev.filter(m => m.id !== id));
+      await apiDeleteUser(uid);
+      setMembers(prev => prev.filter(m => m.uid !== uid));
       showToast('Member removed from system', 'success');
     } catch (error: any) {
       showToast('Error: ' + error.message, 'error');
@@ -1598,14 +1595,14 @@ function MainApp() {
               {!showPurgeConfirm ? (
                 <button onClick={() => setShowPurgeConfirm(true)} className="w-full flex items-center space-x-3 px-4 py-2 font-mono text-[10px] uppercase text-accent hover:bg-accent hover:text-bg transition-colors">
                   <XCircle className="w-3 h-3 mr-2" />
-                  <span>PURGE SYSTEM DATA</span>
+                  <span>{t('purge_data')}</span>
                 </button>
               ) : (
                 <div className="w-full flex flex-col space-y-2 p-2 border border-accent bg-accent/10">
-                  <span className="font-mono text-[10px] uppercase text-accent font-bold text-center">Are you sure?</span>
+                  <span className="font-mono text-[10px] uppercase text-accent font-bold text-center">{t('are_you_sure')}</span>
                   <div className="flex space-x-2">
-                    <button onClick={() => { handleSystemPurge(); setShowPurgeConfirm(false); }} className="flex-1 bg-accent text-bg px-2 py-1 font-mono text-[9px] uppercase font-bold hover:opacity-80">CONFIRM</button>
-                    <button onClick={() => setShowPurgeConfirm(false)} className="flex-1 bg-ink text-bg px-2 py-1 font-mono text-[9px] uppercase text-center hover:opacity-80">CANCEL</button>
+                    <button onClick={() => { handleSystemPurge(); setShowPurgeConfirm(false); }} className="flex-1 bg-accent text-bg px-2 py-1 font-mono text-[9px] uppercase font-bold hover:opacity-80">{t('confirm')}</button>
+                    <button onClick={() => setShowPurgeConfirm(false)} className="flex-1 bg-ink text-bg px-2 py-1 font-mono text-[9px] uppercase text-center hover:opacity-80">{t('cancel')}</button>
                   </div>
                 </div>
               )}

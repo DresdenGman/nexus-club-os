@@ -14,7 +14,9 @@ async function request(path: string, options: RequestInit = {}) {
   // Auto-logout on expired token
   if (res.status === 401 && token) {
     sessionStorage.removeItem('__auth_token');
-    location.reload();
+    const err = await res.json().catch(() => ({ error: 'Session expired' }));
+    setTimeout(() => location.reload(), 100);
+    throw new Error(err.error || 'Session expired');
   }
 
   if (!res.ok) {
@@ -105,8 +107,8 @@ export async function fetchUsers() {
   return request('/data/users');
 }
 
-export async function deleteUser(id: string) {
-  return request(`/data/users/${id}`, { method: 'DELETE' });
+export async function deleteUser(uid: string) {
+  return request(`/data/users/${uid}`, { method: 'DELETE' });
 }
 
 // ── AI API ──

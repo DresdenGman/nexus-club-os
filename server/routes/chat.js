@@ -52,8 +52,8 @@ router.post('/', async (req, res) => {
     const reply = data.choices?.[0]?.message?.content || '';
     res.json({ reply, model: useModel });
   } catch (err) {
-    console.error('Chat error:', err);
-    res.status(500).json({ error: 'Internal server error', detail: err.message });
+    const msg = err.name === 'AbortError' ? 'AI request timed out (15s)' : err.message;
+    res.status(err.name === 'AbortError' ? 504 : 500).json({ error: msg });
   }
 });
 

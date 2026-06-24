@@ -36,7 +36,7 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     if (req.path.startsWith('/api')) {
-      console.error(`${req.method} ${req.path} ${res.statusCode} ${Date.now() - start}ms`);
+      console.log(`${req.method} ${req.path} ${res.statusCode} ${Date.now() - start}ms`);
     }
   });
   next();
@@ -100,9 +100,12 @@ app.post('/api/upload/club/:id', upload.single('image'), async (req, res) => {
     // Verify user is president of this club or admin
     const { data: membership } = await supabase.from('memberships')
       .select('role').eq('user_id', decoded.uid).eq('club_id', req.params.id).maybeSingle();
-    const { data: profile } = await supabase.from('users').select('role').eq('uid', decoded.uid).single();
+    const { data: profile } = await supabase.from('users').select('role').eq('uid', decoded.uid).maybeSingle();
     
-    if (!membership || (membership.role !== 'president' && profile?.role !== 'admin')) {
+    if (!membership && profile?.role !== 'admin') {
+      return res.status(403).json({ error: 'Only president or admin can update' });
+    }
+    if (membership && membership.role !== 'president' && profile?.role !== 'admin') {
       return res.status(403).json({ error: 'Only president or admin can update' });
     }
 
