@@ -1024,7 +1024,7 @@ const MyClubsTab = ({ clubs, isAdmin, showToast }: { clubs: any[], isAdmin: bool
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[1px] bg-line border border-line">
+      <div className="grid grid-cols-1 gap-[1px] bg-line border border-line">
         {myClubs.length === 0 ? (
           <div className="col-span-3 p-12 text-center font-mono text-[11px] uppercase opacity-50">
             Not a member of any clubs yet. Browse the Club Directory to join.
