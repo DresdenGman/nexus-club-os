@@ -166,9 +166,7 @@ router.get('/clubs/:id/members', async (req, res) => {
 router.post('/clubs', requireAuth, async (req, res) => {
   try {
     const clean = whitelist(req.body, CLUB_FIELDS);
-    // Default president_id to current user
     if (!clean.president_id) clean.president_id = req.user.uid;
-    // Only allow creating own club or admin
     if (clean.president_id !== req.user.uid) {
       const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
       if (profile?.role !== 'admin') {
@@ -177,6 +175,17 @@ router.post('/clubs', requireAuth, async (req, res) => {
     }
     const { data, error } = await getSupabase().from('clubs').insert(clean).select().maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
+
+    // Auto-create president membership
+    if (data) {
+      await getSupabase().from('memberships').insert({
+        user_id: clean.president_id,
+        club_id: data.id,
+        role: 'president',
+        status: 'active',
+      });
+    }
+
     res.status(201).json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -246,9 +255,11 @@ router.post('/approvals', requireAuth, async (req, res) => {
 
 router.patch('/approvals/:id', requireAuth, async (req, res) => {
   try {
-    // Only allow status changes, and only for admins
     const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (profile?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    if (!req.body.status || !['Approved','Rejected','Pending Review'].includes(req.body.status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
 
     const updates = {};
     if (req.body.status) updates.status = req.body.status;

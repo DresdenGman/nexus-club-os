@@ -1326,19 +1326,24 @@ function MainApp() {
           type: 'Academic',
           status: 'Active',
           president_id: approval.applicant_id,
-          members_count: 1
+          members_count: 1,
+          image: null
         };
 
         try {
           const parsed = JSON.parse(approval.details);
           clubData = { ...clubData, name: parsed.name, type: parsed.type, description: parsed.description, image: parsed.image };
-        } catch (e) {}
+        } catch (e) { /* ignore parse errors */ }
 
-        await apiCreateClub(clubData);
+        const club = await apiCreateClub(clubData);
+        // President membership is auto-created by backend
+      } else {
+        showToast('Only Club Registration approvals can be processed here', 'info');
+        return;
       }
       await updateApproval(id, { status: 'Approved' });
       setApprovals(prev => prev.map((a: any) => a.id === id ? { ...a, status: 'Approved' } : a));
-      void refreshData();
+      await refreshData();
       showToast('Approved successfully', 'success');
     } catch (error: any) {
       showToast('Error: ' + error.message, 'error');
