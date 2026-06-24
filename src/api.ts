@@ -16,9 +16,7 @@ async function request(path: string, options: RequestInit = {}) {
   // Auto-logout on expired token
   if (res.status === 401 && token) {
     sessionStorage.removeItem('__auth_token');
-    const err = await res.json().catch(() => ({ error: 'Session expired' }));
-    setTimeout(() => location.reload(), 100);
-    throw new Error(err.error || 'Session expired');
+    location.reload();
   }
 
   if (!res.ok) {

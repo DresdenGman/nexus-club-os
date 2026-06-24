@@ -16,9 +16,9 @@ function requireAuth(req, res, next) {
 }
 
 // Field whitelists to prevent mass assignment
-const CLUB_FIELDS = ['name', 'type', 'status', 'president_id', 'members_count', 'image', 'description'];
-const APPROVAL_FIELDS = ['type', 'applicant_id', 'applicant_name', 'status', 'details'];
-const CLUB_UPDATE_FIELDS = ['name', 'type', 'status', 'members_count', 'image', 'description'];
+const CLUB_FIELDS = ['name', 'type', 'president_id', 'members_count', 'image', 'description'];
+const APPROVAL_FIELDS = ['type', 'details'];
+const CLUB_UPDATE_FIELDS = ['name', 'type', 'image', 'description'];
 
 function whitelist(obj, fields) {
   const result = {};
@@ -73,7 +73,12 @@ router.post('/memberships', requireAuth, async (req, res) => {
     const supabase = getSupabase();
     const { data: existing } = await supabase.from('memberships')
       .select('id,status').eq('user_id', req.user.uid).eq('club_id', club_id).maybeSingle();
-    if (existing) return res.status(409).json({ error: existing.status === 'pending' ? 'Already applied' : 'Already a member' });
+    if (existing) {
+      if (existing.status === 'pending') return res.status(409).json({ error: 'Already applied' });
+      if (existing.status === 'active') return res.status(409).json({ error: 'Already a member' });
+      // Rejected — delete old record and allow re-apply
+      await supabase.from('memberships').delete().eq('id', existing.id);
+    }
     const { data, error } = await supabase.from('memberships').insert({
       user_id: req.user.uid, club_id, role: 'member', status: 'pending',
     }).select().maybeSingle();
@@ -95,7 +100,8 @@ router.patch('/memberships/:id', requireAuth, async (req, res) => {
     const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (!president && profile?.role !== 'admin') return res.status(403).json({ error: 'Only president or admin' });
     const { data, error } = await supabase.from('memberships').update({ status }).eq('id', req.params.id).eq('status', 'pending').select().maybeSingle();
-    if (status === 'active' && data) {
+    if (!data) return res.status(400).json({ error: 'Application is no longer pending — may have already been processed' });
+    if (status === 'active') {
       const { data: club } = await supabase.from('clubs').select('members_count').eq('id', membership.club_id).maybeSingle();
       if (club) await supabase.from('clubs').update({ members_count: (club.members_count || 0) + 1 }).eq('id', membership.club_id);
     }
@@ -182,6 +188,7 @@ router.get('/clubs/:id/members', async (req, res) => {
 router.post('/clubs', requireAuth, async (req, res) => {
   try {
     const clean = whitelist(req.body, CLUB_FIELDS);
+    clean.status = 'Active'; // Clubs created via API are active immediately
     if (!clean.president_id) clean.president_id = req.user.uid;
     if (clean.president_id !== req.user.uid) {
       const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
@@ -260,9 +267,12 @@ router.get('/approvals', requireAuth, async (req, res) => {
 router.post('/approvals', requireAuth, async (req, res) => {
   try {
     const clean = whitelist(req.body, APPROVAL_FIELDS);
-    // Force applicant to be the logged-in user
+    // Force applicant from token
     clean.applicant_id = req.user.uid;
     clean.status = 'Pending Review';
+    // Always use the user's real name from DB
+    const { data: userProfile } = await getSupabase().from('users').select('name').eq('uid', req.user.uid).maybeSingle();
+    clean.applicant_name = userProfile?.name || 'Unknown';
     const { data, error } = await getSupabase().from('approvals').insert(clean).select().maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
     res.status(201).json(data);
@@ -333,8 +343,9 @@ router.delete('/users/:id', requireAuth, async (req, res) => {
   try {
     const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (profile?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-    // Prevent deleting self
     if (req.params.id === req.user.uid) return res.status(400).json({ error: 'Cannot delete yourself' });
+    // Cascade: delete memberships first
+    await getSupabase().from('memberships').delete().eq('user_id', req.params.id);
     const { error } = await getSupabase().from('users').delete().eq('uid', req.params.id);
     if (error) return res.status(400).json({ error: error.message });
     res.json({ success: true });

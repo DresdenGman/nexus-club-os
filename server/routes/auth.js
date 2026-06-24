@@ -85,7 +85,7 @@ router.post('/signup', async (req, res) => {
     // Check username uniqueness
     const username = name || cleanEmail.split('@')[0];
     const { data: nameConflict } = await supabase.from('users').select('uid').eq('username', username).maybeSingle();
-    if (nameConflict) return res.status(409).json({ error: 'Name already taken. Please use a different display name or contact admin.' });
+    if (nameConflict) return res.status(409).json({ error: 'This display name is already in use. Please choose a different name.' });
 
     const uid = crypto.randomUUID();
     const hashedPw = hashPassword(password);
