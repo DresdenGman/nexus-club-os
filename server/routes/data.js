@@ -49,7 +49,7 @@ router.get('/clubs/:id', async (req, res) => {
 router.get('/clubs', async (_req, res) => {
   try {
     const supabase = getSupabase();
-    const { data: clubs, error } = await supabase.from('clubs').select('id,name,type,status,president_id,members_count,description,created_at').order('created_at', { ascending: false });
+    const { data: clubs, error } = await supabase.from('clubs').select('*').order('created_at', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
 
     // Batch-fetch president names
