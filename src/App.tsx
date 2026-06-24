@@ -503,7 +503,8 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
     setLoadingDetail(false);
   };
 
-  const filteredClubs = clubs.filter((c: any) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const searchTrimmed = searchTerm.trim().toLowerCase();
+const filteredClubs = clubs.filter((c: any) => c.name.toLowerCase().includes(searchTrimmed));
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1280,7 +1281,10 @@ function MainApp() {
     authLogout();
   };
 
-  const handleSystemPurge = async () => {
+  const [isPurging, setIsPurging] = useState(false);
+const handleSystemPurge = async () => {
+  if (isPurging) return;
+  setIsPurging(true);
     if (!isAdmin) return;
     
     setToast({ message: "PURGE INITIATED...", type: "info" });
@@ -1308,9 +1312,11 @@ function MainApp() {
 
       showToast("SYSTEM PURGED: ALL DATA ERASED", "success");
       void refreshData();
+      setIsPurging(false);
     } catch (error) {
       console.error("Purge Error", error);
       showToast("PURGE FAILED: CHECK PERMISSIONS", "error");
+      setIsPurging(false);
     }
   };
 
@@ -1456,6 +1462,7 @@ function MainApp() {
   
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+  return () => clearInterval(timer);
     return () => clearInterval(timer);
   }, []);
 

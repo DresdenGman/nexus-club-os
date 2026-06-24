@@ -1,6 +1,6 @@
 {
-  "name": "react-example",
   "private": true,
+  "name": "nexus-club-os",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
