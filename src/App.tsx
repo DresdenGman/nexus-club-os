@@ -2,7 +2,6 @@ import React, { useState, createContext, useContext, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
-  FileText, 
   Calendar, 
   Award, 
   Bell, 
@@ -14,7 +13,6 @@ import {
   ChevronRight,
   ChevronLeft,
   BarChart3,
-  MapPin,
   Upload,
   LogOut,
   Sparkles,
@@ -939,8 +937,8 @@ const MembersTab = ({ members, showToast, isAdmin, onDeleteMember }: { members: 
               </tr>
             </thead>
             <tbody className="font-sans text-[13px]">
-              {members.map((member, i) => (
-                <tr key={i} className="border-b border-line/20 hover:bg-ink hover:text-bg transition-colors group">
+              {members.map((member) => (
+                <tr key={member.uid || member.id} className="border-b border-line/20 hover:bg-ink hover:text-bg transition-colors group">
                   <td className="p-3 font-mono opacity-50 text-[11px] truncate">{String(member.id).substring(0, 8)}</td>
                   <td className="p-3 flex items-center truncate">
                     <div className="w-6 h-6 border border-line flex items-center justify-center font-serif italic text-[10px] mr-3 group-hover:border-bg shrink-0">

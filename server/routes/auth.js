@@ -125,6 +125,10 @@ router.post('/login', async (req, res) => {
     
     if (!user) {
       ({ data: user, error } = await query.eq('username', loginValue).maybeSingle());
+      if (!user) {
+        // Try case-insensitive username match
+        ({ data: user, error } = await query.ilike('username', loginValue).maybeSingle());
+      }
     }
     
     if (error || !user) return res.status(401).json({ error: 'Invalid email/username or password' });

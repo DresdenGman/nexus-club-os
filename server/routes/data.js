@@ -78,9 +78,9 @@ router.patch('/memberships/:id', requireAuth, async (req, res) => {
       .select('id').eq('user_id', req.user.uid).eq('club_id', membership.club_id).eq('role', 'president').maybeSingle();
     const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).single();
     if (!president && profile?.role !== 'admin') return res.status(403).json({ error: 'Only president or admin' });
-    const { data, error } = await supabase.from('memberships').update({ status }).eq('id', req.params.id).select().single();
-    if (status === 'active') {
-      const { data: club } = await supabase.from('clubs').select('members_count').eq('id', membership.club_id).single();
+    const { data, error } = await supabase.from('memberships').update({ status }).eq('id', req.params.id).eq('status', 'pending').select().single();
+    if (status === 'active' && data) {
+      const { data: club } = await supabase.from('clubs').select('members_count').eq('id', membership.club_id).maybeSingle();
       if (club) await supabase.from('clubs').update({ members_count: (club.members_count || 0) + 1 }).eq('id', membership.club_id);
     }
     if (error) return res.status(400).json({ error: error.message });
@@ -183,6 +183,14 @@ router.post('/clubs', requireAuth, async (req, res) => {
 
 router.patch('/clubs/:id', requireAuth, async (req, res) => {
   try {
+    // Verify ownership: must be president or admin
+    const { data: membership } = await getSupabase().from('memberships')
+      .select('role').eq('user_id', req.user.uid).eq('club_id', req.params.id).maybeSingle();
+    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
+    if ((!membership || membership.role !== 'president') && profile?.role !== 'admin') {
+      return res.status(403).json({ error: 'Only club president or admin can edit' });
+    }
+
     const clean = whitelist(req.body, CLUB_UPDATE_FIELDS);
     const { data, error } = await getSupabase().from('clubs').update(clean).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ error: error.message });
@@ -192,11 +200,13 @@ router.patch('/clubs/:id', requireAuth, async (req, res) => {
 
 router.delete('/clubs/:id', requireAuth, async (req, res) => {
   try {
-    const { data: club } = await getSupabase().from('clubs').select('president_id').eq('id', req.params.id).single();
-    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).single();
+    const { data: club } = await getSupabase().from('clubs').select('president_id').eq('id', req.params.id).maybeSingle();
+    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (!club || (club.president_id !== req.user.uid && profile?.role !== 'admin')) {
       return res.status(403).json({ error: 'Permission denied' });
     }
+    // Cascade: delete memberships first
+    await getSupabase().from('memberships').delete().eq('club_id', req.params.id);
     const { error } = await getSupabase().from('clubs').delete().eq('id', req.params.id);
     if (error) return res.status(400).json({ error: error.message });
     res.json({ success: true });
