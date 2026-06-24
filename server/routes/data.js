@@ -302,7 +302,7 @@ router.get('/users', requireAuth, async (_req, res) => {
   try {
     const { data, error } = await getSupabase()
       .from('users')
-      .select('id,uid,name,email,role,department,join_date,contribution,avatar,created_at')
+      .select('id,uid,name,email,username,role,department,join_date,contribution,avatar,created_at')
       .order('created_at', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);

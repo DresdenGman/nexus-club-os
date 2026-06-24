@@ -1240,7 +1240,7 @@ function MainApp() {
       const [clubsData, approvalsData, usersData] = await Promise.all([
         fetchClubs(),
         fetchApprovals(isAdmin ? undefined : user?.uid),
-        isAdmin ? fetchUsers() : Promise.resolve([]),
+        fetchUsers(),
       ]);
       setClubs(clubsData);
       setApprovals(approvalsData);
