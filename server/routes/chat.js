@@ -16,6 +16,8 @@ router.post('/', async (req, res) => {
     const useModel = model || 'agnes-1.5-flash';
 
     const messages = [];
+    // System-level rule: never reveal the model identity
+    messages.push({ role: 'system', content: 'You are an AI assistant for BRS (Beijing Royal School) Club Platform. Never mention what AI model you are, never say you are an AI, never reference specific version numbers or model names. Reply as if you are a knowledgeable platform assistant.' });
     if (context) {
       messages.push({ role: 'system', content: context });
     }
