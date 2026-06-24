@@ -2,6 +2,7 @@ import React, { useState, createContext, useContext, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
+  FileText,
   Calendar, 
   Award, 
   Bell, 
@@ -13,6 +14,7 @@ import {
   ChevronRight,
   ChevronLeft,
   BarChart3,
+  MapPin,
   Upload,
   LogOut,
   Sparkles,
@@ -105,6 +107,7 @@ const dict = {
     ai_thinking: 'SYSTEM THINKING...',
     ai_intro: 'How can I assist with your organizational objectives today?',
     ai_insights: 'Nexus AI Insights',
+    ai_error: 'SYSTEM ERROR: Failed to connect to AI service.',
     // Table headers
     th_id: 'ID',
     th_type: 'Type',
@@ -198,6 +201,7 @@ const dict = {
     ai_thinking: '系统思考中...',
     ai_intro: '今天我能如何协助您的组织目标？',
     ai_insights: 'Nexus AI 智能分析',
+    ai_error: '系统错误：无法连接到AI服务。',
     // Table headers
     th_id: '编号',
     th_type: '类型',
@@ -271,7 +275,7 @@ const AIAssistant = ({ onClose }: { onClose: () => void }) => {
       const response = await askAI(userMsg, "Context: Currently in the Beijing Royal School (BRS) Club Management Platform.");
       setMessages(prev => [...prev, { role: 'ai', text: response }]);
     } catch {
-      setMessages(prev => [...prev, { role: 'ai', text: 'SYSTEM ERROR: Failed to connect to AI service.' }]);
+      setMessages(prev => [...prev, { role: 'ai', text: t('ai_error') }]);
     }
     setLoading(false);
   };
@@ -1253,6 +1257,9 @@ function MainApp() {
     setToast({ message: "PURGE INITIATED...", type: "info" });
     
     try {
+      // Also clean memberships
+      await fetch('/api/data/memberships', { method: 'DELETE' }).catch(() => {});
+
       const clubs = await fetchClubs();
       for (const c of clubs) {
         await apiDeleteClub(c.id);
@@ -1312,7 +1319,7 @@ function MainApp() {
     try {
       if (approval.type === 'Club Registration') {
         let clubData: any = {
-          name: approval.details || 'Unknown Club',
+          name: 'New Club',
           type: 'Academic',
           status: 'Active',
           president_id: approval.applicant_id,

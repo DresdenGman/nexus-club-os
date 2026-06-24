@@ -99,7 +99,7 @@ router.post('/signup', async (req, res) => {
 
     const { data: profile } = await supabase.from('users')
       .select('uid,name,email,role,department,join_date,contribution,avatar,created_at')
-      .eq('uid', uid).single();
+      .eq('uid', uid).maybeSingle();
     const token = generateToken(uid, cleanEmail);
     res.status(201).json({
       user: { uid, email: cleanEmail, displayName: name || cleanEmail.split('@')[0] },

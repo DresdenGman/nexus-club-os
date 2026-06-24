@@ -60,7 +60,7 @@ router.post('/memberships', requireAuth, async (req, res) => {
     if (existing) return res.status(409).json({ error: existing.status === 'pending' ? 'Already applied' : 'Already a member' });
     const { data, error } = await supabase.from('memberships').insert({
       user_id: req.user.uid, club_id, role: 'member', status: 'pending',
-    }).select().single();
+    }).select().maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
     res.status(201).json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -72,13 +72,13 @@ router.patch('/memberships/:id', requireAuth, async (req, res) => {
     const { status } = req.body;
     if (!status || !['active', 'rejected'].includes(status)) return res.status(400).json({ error: 'status must be active or rejected' });
     const supabase = getSupabase();
-    const { data: membership } = await supabase.from('memberships').select('club_id').eq('id', req.params.id).single();
+    const { data: membership } = await supabase.from('memberships').select('club_id').eq('id', req.params.id).maybeSingle();
     if (!membership) return res.status(404).json({ error: 'Not found' });
     const { data: president } = await supabase.from('memberships')
       .select('id').eq('user_id', req.user.uid).eq('club_id', membership.club_id).eq('role', 'president').maybeSingle();
-    const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).single();
+    const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (!president && profile?.role !== 'admin') return res.status(403).json({ error: 'Only president or admin' });
-    const { data, error } = await supabase.from('memberships').update({ status }).eq('id', req.params.id).eq('status', 'pending').select().single();
+    const { data, error } = await supabase.from('memberships').update({ status }).eq('id', req.params.id).eq('status', 'pending').select().maybeSingle();
     if (status === 'active' && data) {
       const { data: club } = await supabase.from('clubs').select('members_count').eq('id', membership.club_id).maybeSingle();
       if (club) await supabase.from('clubs').update({ members_count: (club.members_count || 0) + 1 }).eq('id', membership.club_id);
@@ -170,12 +170,12 @@ router.post('/clubs', requireAuth, async (req, res) => {
     if (!clean.president_id) clean.president_id = req.user.uid;
     // Only allow creating own club or admin
     if (clean.president_id !== req.user.uid) {
-      const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).single();
+      const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
       if (profile?.role !== 'admin') {
         return res.status(403).json({ error: 'Cannot create club for another user' });
       }
     }
-    const { data, error } = await getSupabase().from('clubs').insert(clean).select().single();
+    const { data, error } = await getSupabase().from('clubs').insert(clean).select().maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
     res.status(201).json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -192,7 +192,7 @@ router.patch('/clubs/:id', requireAuth, async (req, res) => {
     }
 
     const clean = whitelist(req.body, CLUB_UPDATE_FIELDS);
-    const { data, error } = await getSupabase().from('clubs').update(clean).eq('id', req.params.id).select().single();
+    const { data, error } = await getSupabase().from('clubs').update(clean).eq('id', req.params.id).select().maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -219,7 +219,7 @@ router.get('/approvals', requireAuth, async (req, res) => {
   try {
     let query = getSupabase().from('approvals').select('*').order('created_at', { ascending: false });
     // Non-admins only see own approvals
-    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).single();
+    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (profile?.role !== 'admin') {
       query = query.eq('applicant_id', req.user.uid);
     }
@@ -238,7 +238,7 @@ router.post('/approvals', requireAuth, async (req, res) => {
     // Force applicant to be the logged-in user
     clean.applicant_id = req.user.uid;
     clean.status = 'Pending Review';
-    const { data, error } = await getSupabase().from('approvals').insert(clean).select().single();
+    const { data, error } = await getSupabase().from('approvals').insert(clean).select().maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
     res.status(201).json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -247,13 +247,13 @@ router.post('/approvals', requireAuth, async (req, res) => {
 router.patch('/approvals/:id', requireAuth, async (req, res) => {
   try {
     // Only allow status changes, and only for admins
-    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).single();
+    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (profile?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
 
     const updates = {};
     if (req.body.status) updates.status = req.body.status;
 
-    const { data, error } = await getSupabase().from('approvals').update(updates).eq('id', req.params.id).select().single();
+    const { data, error } = await getSupabase().from('approvals').update(updates).eq('id', req.params.id).select().maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -261,7 +261,7 @@ router.patch('/approvals/:id', requireAuth, async (req, res) => {
 
 router.delete('/approvals/:id', requireAuth, async (req, res) => {
   try {
-    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).single();
+    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (profile?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
     const { error } = await getSupabase().from('approvals').delete().eq('id', req.params.id);
     if (error) return res.status(400).json({ error: error.message });
@@ -284,7 +284,7 @@ router.get('/users', requireAuth, async (_req, res) => {
 
 router.patch('/users/:id', requireAuth, async (req, res) => {
   try {
-    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).single();
+    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (profile?.role !== 'admin' && req.user.uid !== req.params.id) {
       return res.status(403).json({ error: 'Permission denied' });
     }
@@ -296,7 +296,7 @@ router.patch('/users/:id', requireAuth, async (req, res) => {
       .update(clean)
       .eq('uid', req.params.id)
       .select('uid,name,email,role,department,join_date,contribution,avatar,created_at')
-      .single();
+      .maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -304,7 +304,7 @@ router.patch('/users/:id', requireAuth, async (req, res) => {
 
 router.delete('/users/:id', requireAuth, async (req, res) => {
   try {
-    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).single();
+    const { data: profile } = await getSupabase().from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (profile?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
     // Prevent deleting self
     if (req.params.id === req.user.uid) return res.status(400).json({ error: 'Cannot delete yourself' });

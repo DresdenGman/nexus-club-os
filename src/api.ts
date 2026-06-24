@@ -1,5 +1,7 @@
 // API client for Nexus Club OS backend
-const API_BASE = window.location.origin + '/api';
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:3001/api'
+  : window.location.origin + '/api';
 
 async function request(path: string, options: RequestInit = {}) {
   const token = sessionStorage.getItem('__auth_token');
