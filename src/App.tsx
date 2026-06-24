@@ -118,7 +118,7 @@ const dict = {
     th_student_id: 'Student ID',
     th_name: 'Name',
     th_role: 'Role',
-    th_department: 'Department',
+    th_department: 'Class',
     th_join_date: 'Join Date',
     // Form fields
     category: 'Category',
@@ -136,6 +136,11 @@ const dict = {
     // Loading
     loading: 'Initializing System...',
     no_members: 'No Members Found',
+    no_clubs_yet: 'Not a member of any clubs yet. Browse the Club Directory to join.',
+    pending_for: 'Pending —',
+    admin_view: 'Admin View',
+    approved_toast: 'Approved',
+    rejected_toast: 'Rejected',
   },
   zh: {
     platform_overview: '平台概览',
@@ -213,7 +218,7 @@ const dict = {
     th_student_id: '学号',
     th_name: '姓名',
     th_role: '角色',
-    th_department: '院系',
+    th_department: '班级',
     th_join_date: '加入日期',
     // Form fields
     category: '类别',
@@ -231,6 +236,11 @@ const dict = {
     // Loading
     loading: '正在初始化系统...',
     no_members: '暂无成员',
+    no_clubs_yet: '还没有加入任何社团，去社团目录看看吧。',
+    pending_for: '待审批 —',
+    admin_view: '管理员视图',
+    approved_toast: '已通过',
+    rejected_toast: '已拒绝',
   }
 };
 
@@ -254,7 +264,7 @@ const computeActivityData = (approvals: any[]) => {
       const approvalDate = a.date || a.created_at;
       return approvalDate && String(approvalDate).split('T')[0] === dayStr;
     }).length;
-    result.push({ name: days[d.getDay() === 0 ? 6 : d.getDay() - 1], activities: count });
+    result.push({ name: days[(d.getDay() + 6) % 7], activities: count });
   }
   return result;
 };
@@ -371,7 +381,9 @@ const DashboardTab = ({ clubs, approvals, lang }: { clubs: any[], approvals: any
           const prompt = `Based on these real-time high school club statistics from Beijing Royal School, generate a single-sentence positive and encouraging administrative insight. Highlight growth, diversity, or student engagement. ${langPrompt} Do not invent data outside of what is provided. ${statsSummary}`;
           const result = await askAI(prompt);
           setInsight(result);
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+          setInsight(lang === "zh" ? "AI 分析暂时不可用" : "AI analysis temporarily unavailable");
+        }
       }
       if (!cancelled) setIsGenerating(false);
     }, 5000);
@@ -502,7 +514,7 @@ const ClubsTab = ({ clubs, addApproval, showToast, isAdmin, onDeleteClub }: { cl
          description: newClubDesc,
          image: newClubImage
        });
-       addApproval('Registration', regData);
+       addApproval('Club Registration', regData);
        showToast(t('req_submitted'), 'success');
        setShowModal(false);
        setNewClubName('');
@@ -1030,7 +1042,7 @@ const MyClubsTab = ({ clubs, isAdmin, showToast }: { clubs: any[], isAdmin: bool
       <div className="grid grid-cols-1 gap-[1px] bg-line border border-line">
         {myClubs.length === 0 ? (
           <div className="col-span-3 p-12 text-center font-mono text-[11px] uppercase opacity-50">
-            Not a member of any clubs yet. Browse the Club Directory to join.
+            {t('no_clubs_yet')}
           </div>
         ) : (
           myClubs.map((club: any) => (
@@ -1058,7 +1070,7 @@ const MyClubsTab = ({ clubs, isAdmin, showToast }: { clubs: any[], isAdmin: bool
         return (
           <div key={clubId} className="border border-line bg-bg p-6">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest opacity-60 mb-4">
-              Pending — {club.name} {isAdmin && !isPresident && '(Admin View)'}
+              {t('pending_for')} {club.name}{isAdmin && !isPresident ? ' (' + t('admin_view') + ')' : ''}
             </h3>
             <div className="space-y-2">
               {applications.map((app: any) => (
@@ -1067,15 +1079,19 @@ const MyClubsTab = ({ clubs, isAdmin, showToast }: { clubs: any[], isAdmin: bool
                   {isPresident ? (
                     <div className="flex space-x-2">
                       <button onClick={async () => {
-                        await approveMembership(app.id, 'active');
-                        showToast('Approved', 'success');
-                        setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
-                      }} className="font-mono text-[9px] uppercase bg-ink text-bg px-3 py-1 hover:bg-accent">Approve</button>
+                        try {
+                          await approveMembership(app.id, 'active');
+                          showToast(t('approved_toast'), 'success');
+                          setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
+                        } catch(e: any) { showToast(e.message || 'Approval failed', 'error'); }
+                      }} className="font-mono text-[9px] uppercase bg-ink text-bg px-3 py-1 hover:bg-accent">{t('confirm')}</button>
                       <button onClick={async () => {
-                        await approveMembership(app.id, 'rejected');
-                        showToast('Rejected', 'success');
-                        setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
-                      }} className="font-mono text-[9px] uppercase border border-line px-3 py-1 hover:bg-accent hover:text-bg">Reject</button>
+                        try {
+                          await approveMembership(app.id, 'rejected');
+                          showToast(t('rejected_toast'), 'success');
+                          setPendingApps(prev => ({ ...prev, [clubId]: prev[clubId].filter(a => a.id !== app.id) }));
+                        } catch(e: any) { showToast(e.message || 'Rejection failed', 'error'); }
+                      }} className="font-mono text-[9px] uppercase border border-line px-3 py-1 hover:bg-accent hover:text-bg">{t('cancel')}</button>
                     </div>
                   ) : (
                     <span className="font-mono text-[9px] uppercase opacity-50">Pending Review</span>
@@ -1102,7 +1118,7 @@ const ResourcesTab = ({ addApproval, showToast, userName }: { addApproval: (type
     e.preventDefault();
     if(!date || !time || !purpose) return showToast('Please fill all fields', 'error');
     const detailsObj = { venue, date, time, purpose };
-    addApproval('Venue', JSON.stringify(detailsObj));
+    addApproval('Venue Booking', JSON.stringify(detailsObj));
     showToast(t('req_submitted'), 'success');
     setDate(''); setTime(''); setPurpose(''); setVenue('MAIN AUDITORIUM');
   };
@@ -1111,7 +1127,7 @@ const ResourcesTab = ({ addApproval, showToast, userName }: { addApproval: (type
     const file = e.target.files?.[0];
     if (file) {
        const detailsObj = { file: file.name, type: 'Budget Document' };
-       addApproval('Budget', JSON.stringify(detailsObj));
+       addApproval('Budget Request', JSON.stringify(detailsObj));
        showToast(t('uploaded'), 'success');
        e.target.value = ''; // reset input
     }
