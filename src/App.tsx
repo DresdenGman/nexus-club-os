@@ -374,7 +374,7 @@ const DashboardTab = ({ clubs, approvals, lang }: { clubs: any[], approvals: any
         } catch (e) { /* ignore */ }
       }
       if (!cancelled) setIsGenerating(false);
-    }, 2000);
+    }, 5000);
 
     return () => { cancelled = true; clearTimeout(timer); };
   }, [clubs, approvals]);

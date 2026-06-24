@@ -10,7 +10,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    const AGNES_KEY = process.env.AGNES_API_KEY || '';
+    // Chat dialog uses dedicated key if available
+    const AGNES_KEY = process.env.AGNES_CHAT_KEY || process.env.AGNES_API_KEY || '';
     const AGNES_BASE = process.env.AGNES_BASE_URL || 'https://apihub.agnes-ai.com/v1';
     const useModel = model || 'agnes-1.5-flash';
 
@@ -21,7 +22,7 @@ router.post('/', async (req, res) => {
     messages.push({ role: 'user', content: prompt });
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
     const response = await fetch(`${AGNES_BASE}/chat/completions`, {
       method: 'POST',
