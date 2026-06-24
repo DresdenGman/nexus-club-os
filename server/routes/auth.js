@@ -82,12 +82,17 @@ router.post('/signup', async (req, res) => {
     const { data: existing } = await supabase.from('users').select('uid').eq('email', cleanEmail).maybeSingle();
     if (existing) return res.status(409).json({ error: 'Email already registered' });
 
+    // Check username uniqueness
+    const username = name || cleanEmail.split('@')[0];
+    const { data: nameConflict } = await supabase.from('users').select('uid').eq('username', username).maybeSingle();
+    if (nameConflict) return res.status(409).json({ error: 'Name already taken. Please use a different display name or contact admin.' });
+
     const uid = crypto.randomUUID();
     const hashedPw = hashPassword(password);
 
     const { error: createError } = await supabase.from('users').insert({
       uid, name: name || cleanEmail.split('@')[0], email: cleanEmail,
-      password_hash: hashedPw, role: 'member', department: department || null,
+      username, password_hash: hashedPw, role: 'member', department: department || null,
       join_date: new Date().toISOString(), contribution: 0,
     });
     if (createError) return res.status(500).json({ error: createError.message });
@@ -107,18 +112,27 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const loginValue = (email || '').trim();
+    if (!loginValue || !password) return res.status(400).json({ error: 'Email/username and password required' });
 
     const supabase = getSupabase();
-    const cleanEmail = email.toLowerCase().trim();
-    const { data: user, error } = await supabase.from('users')
-      .select('uid,name,email,role,department,join_date,contribution,avatar,password_hash,created_at')
-      .eq('email', cleanEmail).maybeSingle();
-    if (error || !user) return res.status(401).json({ error: 'Invalid email or password' });
+    
+    // Try email first, then username
+    let query = supabase.from('users')
+      .select('uid,name,email,username,role,department,join_date,contribution,avatar,password_hash,created_at');
+    
+    let { data: user, error } = await query.eq('email', loginValue.toLowerCase()).maybeSingle();
+    
+    if (!user) {
+      ({ data: user, error } = await query.eq('username', loginValue).maybeSingle());
+    }
+    
+    if (error || !user) return res.status(401).json({ error: 'Invalid email/username or password' });
     if (!user.password_hash || !verifyPassword(password, user.password_hash)) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Invalid email/username or password' });
     }
 
+    const cleanEmail = user.email;
     if (ADMIN_EMAILS.includes(cleanEmail) && user.role !== 'admin') {
       await supabase.from('users').update({ role: 'admin' }).eq('uid', user.uid);
       user.role = 'admin';
