@@ -127,6 +127,7 @@ const dict = {
     // Approvals
     admin_req: 'ADMIN REQ',
     processed: 'PROCESSED',
+    pending_status: 'Pending',
     // Confirmations
     are_you_sure: 'Are you sure?',
     confirm_delete: 'CONFIRM DELETE',
@@ -221,6 +222,7 @@ const dict = {
     // Approvals
     admin_req: '需管理员审核',
     processed: '已处理',
+    pending_status: '待处理',
     // Confirmations
     are_you_sure: '确定吗？',
     confirm_delete: '确认删除',
@@ -846,7 +848,7 @@ const ApprovalsTab = ({ approvals, onApprove, onReject, isAdmin }: { approvals: 
   return (
     <div className="border border-line flex flex-col bg-bg">
       <div className="font-mono text-[10px] font-bold uppercase tracking-widest p-3 border-b border-line flex justify-between items-center opacity-80">
-        <span>{t('pending_apps')}</span>
+        <span>{t('approvals')}</span>
       </div>
       <div className="overflow-x-auto w-full">
         <table className="w-full text-left border-collapse table-fixed">
@@ -863,7 +865,7 @@ const ApprovalsTab = ({ approvals, onApprove, onReject, isAdmin }: { approvals: 
           <tbody className="font-sans text-[13px]">
             {approvals.map((item, i) => (
               <tr key={item.id} className="border-b border-line/20 hover:bg-ink hover:text-bg transition-colors group">
-                <td className="p-3 font-mono opacity-50 text-[11px] truncate">{String(item.id).substring(0, 8)}</td>
+                <td className="p-3 font-mono opacity-50 text-[11px] truncate">{item.date ? String(item.date).split('T')[0] : item.created_at ? String(item.created_at).split('T')[0] : '—'}</td>
                 <td className="p-3 truncate">{item.type}</td>
                 <td className="p-3 truncate">
                   <div className="truncate font-medium">{item.applicant_name || item.applicantName || item.applicant}</div>
@@ -879,7 +881,7 @@ const ApprovalsTab = ({ approvals, onApprove, onReject, isAdmin }: { approvals: 
                           }
                           return `Req: ${parsed.name} - ${parsed.type}`;
                         } catch (e) {
-                          return item.details;
+                          return item.details && item.details.length > 36 ? item.details.slice(0, 50) + '...' : '';
                         }
                       })()}
                     </div>
@@ -908,11 +910,11 @@ const ApprovalsTab = ({ approvals, onApprove, onReject, isAdmin }: { approvals: 
                       </div>
                     ) : (
                       <span className="font-mono text-[9px] opacity-60 font-bold tracking-widest">
-                        PENDING
+                        {t('pending_status')}
                       </span>
                     )
                   ) : (
-                    <span className="font-mono text-[9px] opacity-50">PROCESSED</span>
+                    <span className="font-mono text-[9px] opacity-50">{t('processed')}</span>
                   )}
                 </td>
               </tr>
