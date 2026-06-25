@@ -49,15 +49,22 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formTitle || !formDesc || !formContact || !selectedClubId) return showToast('Please fill required fields', 'error');
+    console.log('handleCreate called', { formTitle, formDesc, formContact, selectedClubId });
+    if (!formTitle || !formDesc || !formContact || !selectedClubId) {
+      console.log('validation failed');
+      return showToast('Please fill required fields', 'error');
+    }
     try {
-      const body: any = { title: formTitle, description: formDesc, contact_info: formContact, join_link: formLink, primary_club_id: selectedClubId, needs_approval: formNeedsApproval };
-            const d = await apiReq('/data/activities', { method: 'POST', body: JSON.stringify(body) });
+      const body = { title: formTitle, description: formDesc, contact_info: formContact, join_link: formLink, primary_club_id: selectedClubId, needs_approval: formNeedsApproval };
+      console.log('sending', body);
+      const d = await apiReq('/data/activities', { method: 'POST', body: JSON.stringify(body) });
+      console.log('response', d);
       if (d.error) throw new Error(d.error);
       showToast(d.status === 'active' ? T('act_published') : T('act_submitted'), 'success');
+      console.log('toast shown');
       setShowCreate(false);
-            fetchActivities();
-    } catch (e: any) { showToast(e.message, 'error'); }
+      fetchActivities();
+    } catch (e: any) { console.error('catch', e.message); showToast(e.message, 'error'); }
   };
 
   const handleJoin = async (activityId: string) => {
