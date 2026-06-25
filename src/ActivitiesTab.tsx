@@ -58,7 +58,6 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
       setShowCreate(false);
             fetchActivities();
     } catch (e: any) { showToast(e.message, 'error'); }
-  try { const full = await apiReq('/data/activities/'+activityId); if (full && !full.error) setSelected(full); } catch {}
   };
 
   const handleJoin = async (activityId: string) => {
@@ -68,7 +67,6 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
       showToast(d.status === 'active' ? T('act_joined') : T('act_applied'), 'success');
       fetchActivities();
     } catch (e: any) { showToast(e.message, 'error'); }
-  try { const full = await apiReq('/data/activities/'+activityId); if (full && !full.error) setSelected(full); } catch {}
   };
 
   if (loading) return <div className="font-mono text-[11px] uppercase opacity-60 p-8">{T('ai_thinking')}</div>;
