@@ -252,7 +252,7 @@ const LanguageContext = createContext<{lang: Lang, t: (key: keyof typeof dict['e
 const useTranslation = () => useContext(LanguageContext);
 
 // Activity trend — computed from real approval data
-const computeActivityData = (approvals: any[]) => {
+const computeActivityData = (approvals: any[], visits: number[], memberships: number[]) => {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const today = new Date();
   const result = [];
@@ -260,11 +260,17 @@ const computeActivityData = (approvals: any[]) => {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dayStr = d.toISOString().split('T')[0];
-    const count = approvals.filter(a => {
+    const dayIdx = (d.getDay() + 6) % 7;
+    const approvalCount = approvals.filter(a => {
       const approvalDate = a.date || a.created_at;
       return approvalDate && String(approvalDate).split('T')[0] === dayStr;
     }).length;
-    result.push({ name: days[(d.getDay() + 6) % 7], activities: count });
+    result.push({
+      name: days[dayIdx],
+      visits: visits[i] || 0,
+      approvals: approvalCount,
+      memberships: memberships[i] || 0,
+    });
   }
   return result;
 };
