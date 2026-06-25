@@ -369,4 +369,205 @@ router.delete('/users/:id', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ===== ACTIVITIES =====
+
+// GET /api/data/activities
+router.get('/activities', requireAuth, async (_req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase.from('activities')
+      .select('*, primary_club:clubs!primary_club_id(name,type)')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+    if (error) return res.status(400).json({ error: error.message });
+    
+    // Fetch participant counts
+    const result = [];
+    for (const a of (data || [])) {
+      const { count } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'active');
+      const { count: pendingCount } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'pending');
+      result.push({ ...a, participant_count: count || 0, pending_count: pendingCount || 0 });
+    }
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/data/activities/my — my activities
+router.get('/activities/my', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { data: participations, error } = await supabase.from('activity_participants')
+      .select('activity_id, role, status')
+      .eq('user_id', req.user.uid);
+    if (error) return res.status(400).json({ error: error.message });
+    if (!participations?.length) return res.json([]);
+    
+    const activityIds = participations.map(p => p.activity_id);
+    const { data: activities } = await supabase.from('activities')
+      .select('*, primary_club:clubs!primary_club_id(name,type)')
+      .in('id', activityIds);
+    
+    const result = (activities || []).map(a => {
+      const p = participations.find(x => x.activity_id === a.id);
+      return { ...a, my_role: p?.role, my_status: p?.status };
+    });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/data/activities/:id
+router.get('/activities/:id', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { data: activity, error } = await supabase.from('activities')
+      .select('*, primary_club:clubs!primary_club_id(name,type)').eq('id', req.params.id).maybeSingle();
+    if (error) return res.status(400).json({ error: error.message });
+    if (!activity) return res.status(404).json({ error: 'Not found' });
+    
+    // Fetch participants
+    const { data: participants } = await supabase.from('activity_participants')
+      .select('user_id, role, status').eq('activity_id', req.params.id);
+    const userIds = (participants || []).map(p => p.user_id);
+    const { data: users } = userIds.length ? await supabase.from('users').select('uid,name,avatar').in('uid', userIds) : { data: [] };
+    const userMap = {};
+    if (users) users.forEach(u => { userMap[u.uid] = u; });
+    
+    const parts = (participants || []).map(p => ({
+      ...userMap[p.user_id],
+      role: p.role,
+      status: p.status,
+    }));
+    
+    // Fetch collaborators
+    const { data: collabs } = await supabase.from('activity_collaborators')
+      .select('club_id, status').eq('activity_id', req.params.id);
+    
+    res.json({ ...activity, participants: parts, collaborators: collabs || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/data/activities — create
+router.post('/activities', requireAuth, async (req, res) => {
+  try {
+    const { title, description, image, start_time, end_time, join_link, contact_info, form_link, primary_club_id, needs_approval, collaborator_ids } = req.body;
+    if (!title || !description || !contact_info || !primary_club_id) {
+      return res.status(400).json({ error: 'title, description, contact_info, and primary_club_id are required' });
+    }
+    const supabase = getSupabase();
+    
+    // Verify user is member of this club
+    const { data: membership } = await supabase.from('memberships')
+      .select('role').eq('user_id', req.user.uid).eq('club_id', primary_club_id).eq('status', 'active').maybeSingle();
+    if (!membership) return res.status(403).json({ error: 'You must be a member of this club' });
+    
+    const isPresident = membership.role === 'president';
+    const status = isPresident ? 'active' : 'pending_president';
+    
+    const { data: activity, error } = await supabase.from('activities').insert({
+      title, description, image: image || null, start_time: start_time || null,
+      end_time: end_time || null, join_link: join_link || null,
+      contact_info, form_link: form_link || null,
+      creator_id: req.user.uid, primary_club_id,
+      needs_approval: needs_approval !== false,
+      status,
+    }).select().maybeSingle();
+    if (error) return res.status(400).json({ error: error.message });
+    
+    // Auto-add creator as initiator
+    await supabase.from('activity_participants').insert({
+      activity_id: activity.id, user_id: req.user.uid, role: 'initiator', status: 'active',
+    });
+    
+    // Add collaborators if any
+    if (collaborator_ids?.length) {
+      const collabRecords = collaborator_ids.map(cid => ({
+        activity_id: activity.id, club_id: cid, status: 'pending',
+      }));
+      await supabase.from('activity_collaborators').insert(collabRecords);
+    }
+    
+    res.status(201).json(activity);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/data/activities/:id/collab — approve/reject collaborator
+router.patch('/activities/:id/collab', requireAuth, async (req, res) => {
+  try {
+    const { club_id, status } = req.body;
+    if (!club_id || !['approved','rejected'].includes(status)) return res.status(400).json({ error: 'club_id and status required' });
+    const supabase = getSupabase();
+    
+    const { data: president } = await supabase.from('memberships')
+      .select('id').eq('user_id', req.user.uid).eq('club_id', club_id).eq('role', 'president').maybeSingle();
+    if (!president) return res.status(403).json({ error: 'Only club president can approve' });
+    
+    const { data, error } = await supabase.from('activity_collaborators')
+      .update({ status, approved_by: req.user.uid })
+      .eq('activity_id', req.params.id).eq('club_id', club_id).eq('status', 'pending')
+      .select().maybeSingle();
+    if (error) return res.status(400).json({ error: error.message });
+    if (!data) return res.status(400).json({ error: 'No pending collaborator request found' });
+    
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/data/activities/:id/join
+router.post('/activities/:id/join', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { data: activity } = await supabase.from('activities').select('needs_approval,status').eq('id', req.params.id).maybeSingle();
+    if (!activity || activity.status !== 'active') return res.status(404).json({ error: 'Activity not found' });
+    
+    const { data: existing } = await supabase.from('activity_participants')
+      .select('id,status').eq('activity_id', req.params.id).eq('user_id', req.user.uid).maybeSingle();
+    if (existing) return res.status(409).json({ error: existing.status === 'pending' ? 'Already applied' : 'Already joined' });
+    
+    const autoActive = !activity.needs_approval;
+    const { data, error } = await supabase.from('activity_participants').insert({
+      activity_id: req.params.id, user_id: req.user.uid, role: 'participant',
+      status: autoActive ? 'active' : 'pending',
+    }).select().maybeSingle();
+    if (error) return res.status(400).json({ error: error.message });
+    
+    res.status(201).json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/data/activities/:id/participants/:pid — approve/reject participant
+router.patch('/activities/:id/participants/:pid', requireAuth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!status || !['active','rejected'].includes(status)) return res.status(400).json({ error: 'status required' });
+    const supabase = getSupabase();
+    
+    const { data: activity } = await supabase.from('activities').select('creator_id').eq('id', req.params.id).maybeSingle();
+    if (!activity) return res.status(404).json({ error: 'Not found' });
+    if (activity.creator_id !== req.user.uid) return res.status(403).json({ error: 'Only creator can approve' });
+    
+    const { data, error } = await supabase.from('activity_participants')
+      .update({ status }).eq('id', req.params.pid).eq('status', 'pending').select().maybeSingle();
+    if (error) return res.status(400).json({ error: error.message });
+    if (!data) return res.status(400).json({ error: 'No pending application' });
+    
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/data/activities/:id
+router.delete('/activities/:id', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabase();
+    const { data: activity } = await supabase.from('activities').select('creator_id').eq('id', req.params.id).maybeSingle();
+    if (!activity) return res.status(404).json({ error: 'Not found' });
+    
+    const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
+    if (activity.creator_id !== req.user.uid && profile?.role !== 'admin') {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+    await supabase.from('activities').delete().eq('id', req.params.id);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;
