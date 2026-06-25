@@ -147,6 +147,40 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
             <div className="font-sans text-[13px] mb-6 leading-relaxed">{selected.description}</div>
             {selected.join_link && <p className="font-mono text-[11px] mb-2">🔗 <a href={selected.join_link} target="_blank" className="underline hover:text-accent">Join Link</a></p>}
             <p className="font-mono text-[11px] mb-4">📞 Contact: {selected.contact_info}</p>
+            {selected.pending_count > 0 && (
+              <div className="mb-4 border border-accent/20 p-4">
+                <h4 className="font-mono text-[9px] uppercase tracking-widest text-accent mb-3">{selected.pending_count} Pending Joins</h4>
+                <div className="space-y-2">
+                  {selected.participants?.filter((p: any) => p.status === 'pending').map((p: any) => (
+                    <div key={p.uid} className="flex items-center justify-between py-1 border-b border-line/10 last:border-0">
+                      <span className="font-mono text-[11px]">{p.name || p.uid?.slice(0,8)}</span>
+                      <div className="flex space-x-2">
+                        <button onClick={async (e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          try {
+                            const token = sessionStorage.getItem('__auth_token');
+                            const h: Record<string,string> = {'Content-Type':'application/json'};
+                            if (token) h['Authorization'] = 'Bearer ' + token;
+                            await fetch((location.hostname==='localhost'?'http://localhost:3001/api':'/api')+'/data/activities/'+selected.id+'/participants/'+p.id,{method:'PATCH',headers:h,body:JSON.stringify({status:'active'})});
+                            showToast('Approved','success');
+                          } catch(e: any) { showToast(e.message,'error'); }
+                        }} className="font-mono text-[9px] uppercase bg-ink text-bg px-2 py-0.5 hover:bg-accent">Approve</button>
+                        <button onClick={async (e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          try {
+                            const token = sessionStorage.getItem('__auth_token');
+                            const h: Record<string,string> = {'Content-Type':'application/json'};
+                            if (token) h['Authorization'] = 'Bearer ' + token;
+                            await fetch((location.hostname==='localhost'?'http://localhost:3001/api':'/api')+'/data/activities/'+selected.id+'/participants/'+p.id,{method:'PATCH',headers:h,body:JSON.stringify({status:'rejected'})});
+                            showToast('Rejected','success');
+                          } catch(e: any) { showToast(e.message,'error'); }
+                        }} className="font-mono text-[9px] uppercase border border-line px-2 py-0.5 hover:bg-accent hover:text-bg">Reject</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex space-x-3 pt-4 border-t border-line">
               <button onClick={() => handleJoin(selected.id)} className="flex-1 font-mono text-[11px] uppercase font-bold py-2 bg-accent text-bg hover:bg-ink transition-colors">
                 {selected.needs_approval ? 'Apply to Join' : 'Join Activity'}
