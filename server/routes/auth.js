@@ -187,47 +187,5 @@ router.post('/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// POST /api/auth/forgot-password — generate reset code
-const resetCodes = new Map();
-router.post('/forgot-password', async (req, res) => {
-  try {
-    const email = (req.body.email || '').toLowerCase().trim();
-    if (!email) return res.status(400).json({ error: 'Email required' });
-    
-    const supabase = getSupabase();
-    const { data: user } = await supabase.from('users').select('uid,name').eq('email', email).maybeSingle();
-    if (!user) return res.json({ message: 'If the email exists, a reset code has been generated.' });
-    
-    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    resetCodes.set(user.uid, { code, expires: Date.now() + 30 * 60 * 1000 }); // 30 min expiry
-    
-    // In a real app, send email. For now, return the code directly.
-    console.log(`Password reset code for ${email}: ${code}`);
-    res.json({ message: 'Reset code generated.', code, uid: user.uid });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// POST /api/auth/reset-password — verify code and set new password
-router.post('/reset-password', async (req, res) => {
-  try {
-    const { uid, code, newPassword } = req.body;
-    if (!uid || !code || !newPassword) return res.status(400).json({ error: 'uid, code, and newPassword required' });
-    if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    
-    const entry = resetCodes.get(uid);
-    if (!entry || entry.code !== code || Date.now() > entry.expires) {
-      return res.status(400).json({ error: 'Invalid or expired reset code' });
-    }
-    
-    const supabase = getSupabase();
-    const hashedPw = hashPassword(newPassword);
-    const { error } = await supabase.from('users').update({ password_hash: hashedPw }).eq('uid', uid);
-    if (error) return res.status(500).json({ error: error.message });
-    
-    resetCodes.delete(uid);
-    res.json({ success: true, message: 'Password reset successfully.' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 export { verifyToken };
 export default router;
