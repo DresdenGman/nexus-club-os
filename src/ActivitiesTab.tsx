@@ -219,7 +219,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
               <div className="font-mono text-[10px] uppercase opacity-60 mb-1">{selected.primary_club?.name || 'Unknown'} · {selected.participant_count || 0} participants</div>
               {selected.start_time && <p className="font-mono text-[10px] opacity-50 mb-2">📅 {new Date(selected.start_time).toLocaleDateString()} - {selected.end_time ? new Date(selected.end_time).toLocaleDateString() : 'Ongoing'}</p>}
               <div className="font-sans text-[13px] mb-4 leading-relaxed">{selected.description}</div>
-              {selected.join_link && <p className="font-mono text-[11px] mb-2">🔗 <a href={selected.join_link} target="_blank" className="underline hover:text-accent">Join Link</a></p>}
+              {selected.join_link && <p className="font-mono text-[11px] mb-2">🔗 <a href={selected.join_link.match(/https?:\/\/[^\s]+/)?.[0] || (selected.join_link.startsWith('http') ? selected.join_link : 'https://' + selected.join_link)} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">Join Link</a></p>}
               <p className="font-mono text-[11px] mb-4">📞 Contact: {selected.contact_info}</p>
 
               {/* Collaborators status */}
