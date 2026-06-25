@@ -102,7 +102,6 @@ router.patch('/memberships/:id', requireAuth, async (req, res) => {
     if (!membership) return res.status(404).json({ error: 'Not found' });
     const { data: president } = await supabase.from('memberships')
       .select('id').eq('user_id', req.user.uid).eq('club_id', membership.club_id).eq('role', 'president').maybeSingle();
-    const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (!president) return res.status(403).json({ error: 'Only club president can approve members' });
     const { data, error } = await supabase.from('memberships').update({ status }).eq('id', req.params.id).eq('status', 'pending').select().maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
@@ -125,7 +124,6 @@ router.get('/clubs/:id/pending', requireAuth, async (req, res) => {
 
     const { data: president } = await supabase.from('memberships')
       .select('id').eq('user_id', req.user.uid).eq('club_id', req.params.id).eq('role', 'president').maybeSingle();
-    const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
     if (!president) return res.status(403).json({ error: 'Only club president can approve members' });
 
     const { data, error } = await supabase.from('memberships')
@@ -153,7 +151,7 @@ router.get('/memberships/my', requireAuth, async (req, res) => {
       .from('memberships')
       .select('club_id, role, status')
       .eq('user_id', req.user.uid)
-      .neq('status', 'rejected');// include pending+active
+      .eq('status', 'active')
 
     if (error) return res.status(400).json({ error: error.message });
     if (!memberships || memberships.length === 0) return res.json([]);
@@ -180,7 +178,7 @@ router.get('/clubs/:id/members', requireAuth, async (req, res) => {
       .from('memberships')
       .select('user_id, role, status')
       .eq('club_id', req.params.id)
-      .neq('status', 'rejected');// include pending+active
+      .eq('status', 'active')
 
     if (error) return res.status(400).json({ error: error.message });
     if (!memberships || memberships.length === 0) return res.json([]);
@@ -377,16 +375,15 @@ router.get('/activities', requireAuth, async (_req, res) => {
     const supabase = getSupabase();
     const { data, error } = await supabase.from('activities')
       .select('*, primary_club:clubs!primary_club_id(name,type)')
-      .eq('status', 'active')
       .order('created_at', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
     
     // Fetch participant counts
+    const now = new Date().toISOString();
     const result = [];
-    const pending = (data || []).filter(a => a.status === 'pending_president' && a.creator_id === _req.user?.uid);
-    const all = (data || []).filter(a => a.status === 'active');
-    for (const a of [...all, ...pending]) {
-      const { count } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).neq('status', 'rejected');// include pending+active
+    const filtered = (data || []).filter(a => a.status === 'active' || (a.status === 'pending_president' && a.creator_id === _req.user?.uid));
+    for (const a of filtered) {
+      const { count } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'active')
       const { count: pendingCount } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'pending');
       result.push({ ...a, participant_count: count || 0, pending_count: pendingCount || 0 });
     }
@@ -412,7 +409,7 @@ router.get('/activities/my', requireAuth, async (req, res) => {
     const result = [];
     for (const a of (activities || [])) {
       const p = participations.find(x => x.activity_id === a.id);
-      const { count: pc } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).neq('status', 'rejected');// include pending+active
+      const { count: pc } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'active')
       result.push({ ...a, my_role: p?.role, my_status: p?.status, participant_count: pc || 0 });
     }
     res.json(result);
@@ -553,7 +550,10 @@ router.patch('/activities/:id/participants/:pid', requireAuth, async (req, res) 
     
     const { data: activity } = await supabase.from('activities').select('creator_id').eq('id', req.params.id).maybeSingle();
     if (!activity) return res.status(404).json({ error: 'Not found' });
-    if (activity.creator_id !== req.user.uid) return res.status(403).json({ error: 'Only creator can approve' });
+    // Allow creator OR president of host club
+    const { data: hostClub } = await supabase.from('activities').select('primary_club_id').eq('id', req.params.id).maybeSingle();
+    const { data: pres } = hostClub ? await supabase.from('memberships').select('id').eq('user_id', req.user.uid).eq('club_id', hostClub.primary_club_id).eq('role', 'president').maybeSingle() : { data: null };
+    if (activity.creator_id !== req.user.uid && !pres) return res.status(403).json({ error: 'Only creator or host president can approve' });
     
     const { data, error } = await supabase.from('activity_participants')
       .update({ status }).eq('id', req.params.pid).eq('status', 'pending').select().maybeSingle();
@@ -575,6 +575,8 @@ router.delete('/activities/:id', requireAuth, async (req, res) => {
     if (activity.creator_id !== req.user.uid && profile?.role !== 'admin') {
       return res.status(403).json({ error: 'Permission denied' });
     }
+    await supabase.from('activity_participants').delete().eq('activity_id', req.params.id);
+    await supabase.from('activity_collaborators').delete().eq('activity_id', req.params.id);
     await supabase.from('activities').delete().eq('id', req.params.id);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

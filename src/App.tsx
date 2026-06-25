@@ -67,7 +67,7 @@ const dict = {
     file_path: 'FILE_PATH: /BRS/CLUBS/PLATFORM.MD',
     auth_error: 'Authentication failed. Please check credentials.',
     total_clubs: 'Total Clubs',
-    active_members: 'Active Members',
+    active_members: 'Total Users',
     pending_apps: 'Pending Approvals',
     events_week: 'Events This Week',
     dist_type: 'Club Distribution by Type',
