@@ -952,6 +952,29 @@ const ApprovalsTab = ({ approvals, onApprove, onReject, isAdmin }: { approvals: 
           </tbody>
         </table>
       </div>
+      {myActivities.length > 0 && (
+        <div className="mt-6 border-t-2 border-line pt-6">
+          <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest opacity-60 mb-4">My Activities</h3>
+          <div className="grid grid-cols-1 gap-[1px] bg-line border border-line">
+            {myActivities.map((a: any) => (
+              <div key={a.id} className="bg-bg p-4 flex items-start">
+                <div className="w-12 h-12 border border-line shrink-0 mr-3 bg-ink/5 flex items-center justify-center overflow-hidden">
+                  {a.image ? <img src={a.image} className="w-full h-full object-cover" /> : <Calendar className="w-4 h-4 opacity-50" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-serif italic">{a.title}</h4>
+                  <p className="font-mono text-[9px] uppercase opacity-50">{a.primary_club?.name} · {a.my_role === 'initiator' ? 'Initiator' : 'Participant'} · {a.participant_count || 0} joined</p>
+                </div>
+                <div className="ml-2 shrink-0">
+                  <span className={`font-mono text-[9px] px-2 py-0.5 border ${a.my_status === 'pending' ? 'border-accent text-accent' : 'border-line'}`}>
+                    {a.my_status === 'pending' ? 'Pending' : 'Active'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1029,18 +1052,23 @@ const MembersTab = ({ members, showToast, isAdmin, onDeleteMember }: { members: 
 const MyClubsTab = ({ clubs, isAdmin, showToast }: { clubs: any[], isAdmin: boolean, showToast: (msg: string, type?: string) => void }) => {
   const { t } = useTranslation();
   const [myClubs, setMyClubs] = useState<any[]>([]);
+  const [myActivities, setMyActivities] = useState<any[]>([]);
   const [pendingApps, setPendingApps] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetchMyMemberships(),
-      ...clubs.map(c => fetchPendingApplications(c.id).catch(() => []))
-    ]).then(([memberships, ...pendings]) => {
+      ...clubs.map(c => fetchPendingApplications(c.id).catch(() => [])),
+      fetch('/api/data/activities/my').then(r => r.json()),
+    ]).then(([memberships, ...rest]) => {
+      const pendings = rest.slice(0, clubs.length);
+      const activities = rest[clubs.length];
       setMyClubs(memberships || []);
       const apps: Record<string, any[]> = {};
       clubs.forEach((c, i) => { if (pendings[i]?.length) apps[c.id] = pendings[i]; });
       setPendingApps(apps);
+      setMyActivities(activities || []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []); // Only fetch on mount (user doesn't change during session)
