@@ -378,6 +378,7 @@ router.get('/activities', requireAuth, async (_req, res) => {
     const { data, error } = await supabase.from('activities')
       .select('*, primary_club:clubs!primary_club_id(name,type)')
       .eq('status', 'active')
+      .or('end_time.is.null,end_time.gt.NOW()')
       .order('created_at', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
     
