@@ -457,9 +457,11 @@ router.post('/activities', requireAuth, async (req, res) => {
     
     // Verify user is member of this club OR admin
     const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
+    let membership = null;
     if (profile?.role !== 'admin') {
-      const { data: membership } = await supabase.from('memberships')
+      const { data: mem } = await supabase.from('memberships')
         .select('role').eq('user_id', req.user.uid).eq('club_id', primary_club_id).eq('status', 'active').maybeSingle();
+      membership = mem;
       if (!membership) return res.status(403).json({ error: 'You must be a member of this club' });
     }
     
