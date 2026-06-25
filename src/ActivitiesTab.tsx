@@ -62,6 +62,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) return showToast('Only image files allowed', 'error');
     if (file.size > 500 * 1024) { showToast('Image too large (max 500KB)', 'error'); return; }
     const reader = new FileReader();
     reader.onload = () => { setFormImage(reader.result as string); };
@@ -88,7 +89,11 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
+  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+
   const handleJoin = async (activityId: string) => {
+    if (joinedIds.has(activityId)) return showToast('Already joined', 'info');
+    setJoinedIds(prev => new Set(prev).add(activityId));
     try {
       const d = await apiReq('/data/activities/' + activityId + '/join', { method: 'POST' });
       if (d.error) throw new Error(d.error);
@@ -119,7 +124,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
     !selectedCollabs.find((s: any) => s.id === c.id)
   );
 
-  if (loading) return <div className="font-mono text-[11px] uppercase opacity-60 p-8">{T('ai_thinking')}</div>;
+  
 
   return (
     <div className="space-y-6">

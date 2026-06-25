@@ -103,7 +103,7 @@ router.patch('/memberships/:id', requireAuth, async (req, res) => {
     const { data: president } = await supabase.from('memberships')
       .select('id').eq('user_id', req.user.uid).eq('club_id', membership.club_id).eq('role', 'president').maybeSingle();
     const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
-    if (!president && profile?.role !== 'admin') return res.status(403).json({ error: 'Only president or admin' });
+    if (!president) return res.status(403).json({ error: 'Only club president can approve members' });
     const { data, error } = await supabase.from('memberships').update({ status }).eq('id', req.params.id).eq('status', 'pending').select().maybeSingle();
     if (error) return res.status(400).json({ error: error.message });
     if (!data) return res.status(400).json({ error: 'Application is no longer pending — may have already been processed' });
@@ -126,7 +126,7 @@ router.get('/clubs/:id/pending', requireAuth, async (req, res) => {
     const { data: president } = await supabase.from('memberships')
       .select('id').eq('user_id', req.user.uid).eq('club_id', req.params.id).eq('role', 'president').maybeSingle();
     const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
-    if (!president && profile?.role !== 'admin') return res.status(403).json({ error: 'Only president or admin' });
+    if (!president) return res.status(403).json({ error: 'Only club president can approve members' });
 
     const { data, error } = await supabase.from('memberships')
       .select('id,user_id,role,status,created_at')
@@ -173,7 +173,7 @@ router.get('/memberships/my', requireAuth, async (req, res) => {
 });
 
 // GET /api/data/clubs/:id/members
-router.get('/clubs/:id/members', async (req, res) => {
+router.get('/clubs/:id/members', requireAuth, async (req, res) => {
   try {
     const supabase = getSupabase();
     const { data: memberships, error } = await supabase
@@ -378,13 +378,14 @@ router.get('/activities', requireAuth, async (_req, res) => {
     const { data, error } = await supabase.from('activities')
       .select('*, primary_club:clubs!primary_club_id(name,type)')
       .eq('status', 'active')
-      .or('end_time.is.null,end_time.gt.NOW()')
       .order('created_at', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
     
     // Fetch participant counts
     const result = [];
-    for (const a of (data || [])) {
+    const pending = (data || []).filter(a => a.status === 'pending_president' && a.creator_id === _req.user?.uid);
+    const all = (data || []).filter(a => a.status === 'active');
+    for (const a of [...all, ...pending]) {
       const { count } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'active');
       const { count: pendingCount } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'pending');
       result.push({ ...a, participant_count: count || 0, pending_count: pendingCount || 0 });
@@ -408,10 +409,12 @@ router.get('/activities/my', requireAuth, async (req, res) => {
       .select('*, primary_club:clubs!primary_club_id(name,type)')
       .in('id', activityIds);
     
-    const result = (activities || []).map(a => {
+    const result = [];
+    for (const a of (activities || [])) {
       const p = participations.find(x => x.activity_id === a.id);
-      return { ...a, my_role: p?.role, my_status: p?.status };
-    });
+      const { count: pc } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'active');
+      result.push({ ...a, my_role: p?.role, my_status: p?.status, participant_count: pc || 0 });
+    }
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -427,7 +430,7 @@ router.get('/activities/:id', requireAuth, async (req, res) => {
     
     // Fetch participants
     const { data: participants } = await supabase.from('activity_participants')
-      .select('user_id, role, status').eq('activity_id', req.params.id);
+      .select('id,user_id,role,status').eq('activity_id', req.params.id);
     const userIds = (participants || []).map(p => p.user_id);
     const { data: users } = userIds.length ? await supabase.from('users').select('uid,name,avatar').in('uid', userIds) : { data: [] };
     const userMap = {};

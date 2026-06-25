@@ -151,6 +151,7 @@ const dict = {
     // Loading
     loading: 'Initializing System...',
     no_members: 'No Members Found',
+    president_role: 'President',
     no_clubs_yet: 'Not a member of any clubs yet. Browse the Club Directory to join.',
     pending_for: 'Pending —',
     admin_view: 'Admin View',
@@ -265,6 +266,7 @@ const dict = {
     // Loading
     loading: '正在初始化系统...',
     no_members: '暂无成员',
+    president_role: '社长',
     no_clubs_yet: '还没有加入任何社团，去社团目录看看吧。',
     pending_for: '待审批 —',
     admin_view: '管理员视图',
@@ -1097,7 +1099,7 @@ const MyClubsTab = ({ clubs, isAdmin, showToast }: { clubs: any[], isAdmin: bool
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-serif italic text-lg">{club.name}</h3>
                 <span className={`font-mono text-[9px] uppercase border px-2 py-0.5 ${club.my_role === 'president' ? 'border-accent text-accent bg-accent/5' : 'border-line'}`}>
-                  {club.my_role === 'president' ? '社长' : t('members')}
+                  {club.my_role === 'president' ? t('president_role') : t('members')}
                 </span>
               </div>
               <div className="font-mono text-[10px] uppercase opacity-60 mb-4">{club.type}</div>
@@ -1360,9 +1362,7 @@ const handleSystemPurge = async () => {
     
     try {
       // Also clean memberships
-      await fetch('/api/data/memberships', { method: 'DELETE' }).catch(() => {});
-
-      const clubs = await fetchClubs();
+        const clubs = await fetchClubs();
       for (const c of clubs) {
         await apiDeleteClub(c.id);
       }
