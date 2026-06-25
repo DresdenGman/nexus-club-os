@@ -1,120 +1,95 @@
 import express from 'express';
 const router = express.Router();
 
-// POST /api/chat
 router.post('/', async (req, res) => {
   try {
     const { prompt, context, model } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt is required' });
-    }
-
-    // Chat dialog uses dedicated key if available
     const AGNES_KEY = process.env.AGNES_CHAT_KEY || process.env.AGNES_API_KEY || '';
     const AGNES_BASE = process.env.AGNES_BASE_URL || 'https://apihub.agnes-ai.com/v1';
     const useModel = model || 'agnes-1.5-flash';
 
-    // Auto-fetch platform data for AI context
+    // Auto-fetch ALL platform data
     let platformContext = '';
     try {
       const { getSupabase } = await import('../db.js');
       const s = getSupabase();
 
-      const { data: clubsData } = await s.from('clubs').select('id,name,type,description,members_count,president_id').limit(50);
-      if (clubsData && clubsData.length > 0) {
-        const presidentIds = [...new Set(clubsData.map(c => c.president_id).filter(Boolean))];
-        let nameMap = {};
-        if (presidentIds.length > 0) {
-          const { data: users } = await s.from('users').select('uid,name').in('uid', presidentIds);
-          if (users) users.forEach(u => { nameMap[u.uid] = u.name; });
+      // ── Clubs ──
+      const { data: clubs } = await s.from('clubs').select('id,name,type,description,members_count,president_id').limit(100);
+      if (clubs?.length) {
+        const pids = [...new Set(clubs.map(c => c.president_id).filter(Boolean))];
+        const nm = {};
+        if (pids.length) {
+          const { data: us } = await s.from('users').select('uid,name').in('uid', pids);
+          us?.forEach(u => { nm[u.uid] = u.name; });
         }
-
-        platformContext = 'Current Club Data:\n' + clubsData.map(c =>
-          `- ${c.name} (${c.type}): ${c.description || 'No description'}, Members: ${c.members_count || 0}, President: ${nameMap[c.president_id] || 'Unknown'}`
-        ).join('\n');
+        platformContext += `=== CLUBS (${clubs.length}) ===\n${clubs.map(c => `${c.name} (${c.type}) | ${c.members_count||0}m | President: ${nm[c.president_id]||'?'}`).join('\n')}\n\n`;
       }
-      const { count: totalUsers } = await s.from('users').select('*', { count: 'exact', head: true });
-      platformContext += `\nTotal Users: ${totalUsers || '?'}`;
 
-    } catch (e) {
-      platformContext = '(Platform data unavailable)';
-    }
+      // ── Activities ──
+      const { data: acts } = await s.from('activities').select('title,primary_club_id,start_time,end_time,participant_count,status').eq('status','active').limit(50);
+      if (acts?.length) {
+        const cids = [...new Set(acts.map(a => a.primary_club_id))];
+        const cm = {};
+        if (cids.length) {
+          const { data: clx } = await s.from('clubs').select('id,name').in('id', cids);
+          clx?.forEach(c => { cm[c.id] = c.name; });
+        }
+        platformContext += `=== ACTIVITIES (${acts.length}) ===\n${acts.map(a => `${a.title} | Host: ${cm[a.primary_club_id]||'?'} | ${a.participant_count||0}p | ${a.status}${a.end_time?' | Ends: '+a.end_time.split('T')[0]:''}`).join('\n')}\n\n`;
+      }
 
-    const messages = [];
-    // System-level rule
-    messages.push({
+      // ── Users ──
+      const { count: userCount } = await s.from('users').select('*', { count: 'exact', head: true });
+      platformContext += `=== STATS ===\nTotal Users: ${userCount||0} | Total Clubs: ${clubs?.length||0} | Active Activities: ${acts?.filter(a => a.status==='active').length||0}\n`;
+
+    } catch { platformContext = '(Platform data unavailable)'; }
+
+    const messages = [{
       role: 'system',
-      content: 'You are an AI assistant for BRS (Beijing Royal School) Club Platform. Never mention what AI model you are. Answer questions based on the real club data provided below. If the user asks about data that is not provided, say you cannot access that information.'
-    });
+      content: 'You are an AI assistant for BRS (Beijing Royal School) Club Platform. Never mention your model name. Answer questions accurately using ONLY the real-time data below. If something isn\'t in the data, say so honestly.'
+    }, {
+      role: 'system',
+      content: `=== CURRENT PLATFORM DATA ===\n${platformContext}\n=== END DATA ===`
+    }];
 
-    // Inject real platform data
-    if (platformContext) {
-      messages.push({ role: 'system', content: `Here is the current data from the platform:\n${platformContext}` });
-    }
-
-    if (context) {
-      messages.push({ role: 'system', content: context });
-    }
+    if (context) messages.push({ role: 'system', content: context });
     messages.push({ role: 'user', content: prompt });
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
-    const response = await fetch(`${AGNES_BASE}/chat/completions`, {
+    const resp = await fetch(`${AGNES_BASE}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AGNES_KEY}`,
-      },
-      body: JSON.stringify({
-        model: useModel,
-        messages,
-        max_tokens: 1024,
-      }),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AGNES_KEY}` },
+      body: JSON.stringify({ model: useModel, messages, max_tokens: 1024 }),
       signal: controller.signal,
     });
-
     clearTimeout(timeout);
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`Agnes error ${response.status}:`, errText.slice(0, 300));
-      return res.status(response.status).json({
-        error: 'Agnes API error',
-        detail: errText.slice(0, 500),
-      });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      return res.status(resp.status).json({ error: 'Agnes API error', detail: errText.slice(0, 500) });
     }
 
-    const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content || '';
-    res.json({ reply, model: useModel });
+    const data = await resp.json();
+    res.json({ reply: data.choices?.[0]?.message?.content || '', model: useModel });
   } catch (err) {
-    const msg = err.name === 'AbortError' ? 'AI request timed out (30s)' : err.message;
-    res.status(err.name === 'AbortError' ? 504 : 500).json({ error: msg });
+    res.status(err.name === 'AbortError' ? 504 : 500).json({ error: err.name === 'AbortError' ? 'AI timeout (30s)' : err.message });
   }
 });
 
-// GET /api/chat/models
 router.get('/models', async (_req, res) => {
   try {
     const AGNES_KEY = process.env.AGNES_API_KEY || '';
-    const AGNES_BASE = process.env.AGNES_BASE_URL || 'https://apihub.agnes-ai.com/v1';
-
-    const response = await fetch(`${AGNES_BASE}/models`, {
+    const resp = await fetch(`${process.env.AGNES_BASE_URL || 'https://apihub.agnes-ai.com/v1'}/models`, {
       headers: { 'Authorization': `Bearer ${AGNES_KEY}` },
     });
-
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'Failed to fetch models' });
-    }
-
-    const data = await response.json();
-    const models = (data.data || []).map((m) => ({ id: m.id, owned_by: m.owned_by }));
-    res.json({ models });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    if (!resp.ok) return res.status(resp.status).json({ error: 'Failed to fetch models' });
+    const data = await resp.json();
+    res.json({ models: (data.data || []).map((m) => ({ id: m.id, owned_by: m.owned_by })) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 export default router;
