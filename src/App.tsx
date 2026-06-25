@@ -710,21 +710,25 @@ const filteredClubs = clubs.filter((c: any) => c.name.toLowerCase().includes(sea
                 <div className="font-sans text-[14px] leading-relaxed space-y-4">
                   {selectedClub.description || "No official description has been indexed for this organizational unit."}
                   
-                  {isAdmin && (
+                  {(isAdmin || (selectedClub.president_id === user?.uid)) && (
                     <button 
+                      disabled={aiGenerating}
                       onClick={async () => {
-                        const desc = await generateClubDescription(selectedClub.name, selectedClub.type);
+                        setAiGenerating(true);
                         try {
+                          const desc = await generateClubDescription(selectedClub.name, selectedClub.type);
                           await updateClub(selectedClub.id, { description: desc });
+                          setAiGenerating(false);
                           showToast(t('desc_optimized'), 'success');
                         } catch (e) {
+                          setAiGenerating(false);
                           showToast(t('error_updating'), 'error');
                         }
                       }}
-                      className="flex items-center space-x-2 font-mono text-[9px] uppercase border border-line px-2 py-1 hover:bg-ink hover:text-bg transition-colors"
+                      className="flex items-center space-x-2 font-mono text-[9px] uppercase border border-line px-2 py-1 hover:bg-ink hover:text-bg transition-colors disabled:opacity-30"
                     >
                       <Sparkles className="w-3 h-3" />
-                      <span>{t('ai_generate')}</span>
+                      <span>{aiGenerating ? t('ai_thinking') : t('ai_generate')}</span>
                     </button>
                   )}
                 </div>
