@@ -131,7 +131,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
       </div>
       <div className="grid grid-cols-1 gap-[1px] bg-line border border-line">
         {activities.length === 0 ? (
-          <div className="p-12 text-center font-mono text-[11px] uppercase opacity-50">{T('act_no_activities')}</div>
+          <div className="p-12 text-center font-mono text-[11px] uppercase text-bg opacity-50">{T('act_no_activities')}</div>
         ) : (
           activities.map((a: any) => (
             <div key={a.id} className="bg-bg p-6 flex items-start group hover:bg-ink hover:text-bg transition-colors cursor-pointer" onClick={() => setSelected(a)}>
