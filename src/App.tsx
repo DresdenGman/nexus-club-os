@@ -1742,6 +1742,12 @@ export default function App() {
     return dict[lang][key] || key;
   };
 
+  // Record every page visit
+  useEffect(() => {
+    const base = location.hostname === 'localhost' ? 'http://localhost:3001' : '';
+    fetch(base + '/api/visit', { method: 'POST' }).catch(() => {});
+  }, []);
+
   return (
     <LanguageContext.Provider value={{ lang, t }}>
       <div className="relative">
