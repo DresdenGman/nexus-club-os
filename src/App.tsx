@@ -1255,6 +1255,8 @@ function MainApp() {
   const [approvals, setApprovals] = useState<any[]>([]);
   const [clubs, setClubs] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
+  const [visits, setVisits] = useState<number[]>([0,0,0,0,0,0,0]);
+  const [dailyMemberships, setDailyMemberships] = useState<number[]>([0,0,0,0,0,0,0]);
 
   const refreshData = async () => {
     if (!profile) return;
