@@ -27,7 +27,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
   const [formNeedsApproval, setFormNeedsApproval] = useState(true);
   const [selectedClubId, setSelectedClubId] = useState('');
   const [myClubs, setMyClubs] = useState<any[]>([]);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   // Collaborator search
   const [allClubs, setAllClubs] = useState<any[]>([]);
@@ -91,7 +91,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
-  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+  const [joinedIds, setJoinedIds] = useState(new Set());
 
   const handleJoin = async (activityId: string) => {
     if (joinedIds.has(activityId)) return showToast('Already joined', 'info');
