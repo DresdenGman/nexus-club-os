@@ -38,7 +38,7 @@ import {
   fetchClubs, createClub as apiCreateClub, updateClub, deleteClub as apiDeleteClub,
   fetchApprovals, createApproval, updateApproval,
   fetchUsers, deleteUser as apiDeleteUser,
-  askAI, generateClubDescription, fetchClubMembers, fetchMyMemberships, applyToClub, approveMembership, fetchPendingApplications
+  askAI, generateClubDescription, fetchClubMembers, fetchMyMemberships, fetchMyActivities, applyToClub, approveMembership, fetchPendingApplications
 } from './api';
 
 // --- i18n Dictionary ---
@@ -1087,19 +1087,22 @@ const MyClubsTab = ({ clubs, isAdmin, showToast }: { clubs: any[], isAdmin: bool
   useEffect(() => {
     Promise.all([
       fetchMyMemberships(),
-      ...clubs.map(c => fetchPendingApplications(c.id).catch(() => [])),
-      fetch('/api/data/activities/my').then(r => r.json()),
-    ]).then(([memberships, ...rest]) => {
-      const pendings = rest.slice(0, clubs.length);
-      const activities = rest[clubs.length];
+      fetchMyActivities(),
+    ]).then(async ([memberships, activities]) => {
       setMyClubs(memberships || []);
-      const apps: Record<string, any[]> = {};
-      clubs.forEach((c, i) => { if (pendings[i]?.length) apps[c.id] = pendings[i]; });
-      setPendingApps(apps);
       setMyActivities(activities || []);
+      
+      // Only fetch pending for president clubs
+      const presidentClubIds = (memberships || []).filter(m => m.my_role === 'president').map(m => m.id);
+      if (presidentClubIds.length > 0) {
+        const apps: Record<string, any[]> = {};
+        const results = await Promise.all(presidentClubIds.map(cid => fetchPendingApplications(cid).catch(() => [])));
+        presidentClubIds.forEach((cid, i) => { if (results[i]?.length) apps[cid] = results[i]; });
+        setPendingApps(apps);
+      }
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []); // Only fetch on mount (user doesn't change during session)
+  }, []);
 
   if (loading) return <div className="font-mono text-[11px] uppercase opacity-60 p-8">{t('ai_thinking')}</div>;
 
@@ -1468,19 +1471,12 @@ const handleSystemPurge = async () => {
 
   const handleAddApproval = async (type: string, applicant: string) => {
     if (!profile) return;
-    const payload = {
-      type: type === 'Registration' ? 'Club Registration' : (type === 'Venue' ? 'Venue Booking' : 'Budget Request'),
-      applicant_id: profile.uid,
-      applicant_name: profile.name,
-      status: 'Pending Review',
-      details: applicant,
-    };
     try {
-      await createApproval(payload);
-      const data = await fetchApprovals(isAdmin ? undefined : profile.uid);
-      setApprovals(data);
-    } catch (e: any) {
-      showToast('Error: ' + (e.message || 'Permission denied'), 'error');
+      await createApproval({ type, details: applicant });
+      showToast(t('req_submitted'), 'success');
+      void refreshData();
+    } catch (error: any) {
+      showToast('Error: ' + error.message, 'error');
     }
   };
 

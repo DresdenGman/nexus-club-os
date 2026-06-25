@@ -86,6 +86,10 @@ export async function fetchPendingApplications(clubId: string) {
   return request(`/data/clubs/${clubId}/pending`);
 }
 
+export async function fetchMyActivities() {
+  return request('/data/activities/my');
+}
+
 export async function fetchClubMembers(clubId: string) {
   return request(`/data/clubs/${clubId}/members`);
 }
