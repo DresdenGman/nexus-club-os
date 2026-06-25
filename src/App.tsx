@@ -415,7 +415,7 @@ const DashboardTab = ({ clubs, approvals, visits, memberships, lang }: { clubs: 
           const langPrompt = lang === 'zh'
             ? '请用中文回复。学校名称是"北京王府学校"(Beijing Royal School)，不要翻译成别的名字。语气积极、鼓舞人心。'
             : 'Reply in English. School is Beijing Royal School. Use a positive, encouraging tone.';
-          const prompt = `Based on these real-time high school club statistics from Beijing Royal School, generate a single-sentence positive and encouraging administrative insight. Highlight growth, diversity, or student engagement. ${langPrompt} Do not invent data outside of what is provided. ${statsSummary}`;
+          const prompt = `[Reply in ${sessionStorage.getItem('__lang') === 'zh' ? 'Chinese' : 'English'}] Based on these real-time high school club statistics from Beijing Royal School, generate a single-sentence positive and encouraging administrative insight. Highlight growth, diversity, or student engagement. ${langPrompt} Do not invent data outside of what is provided. ${statsSummary}`;
           const result = await askAI(prompt);
           setInsight(result);
         } catch (e) {
@@ -1025,15 +1025,14 @@ const MembersTab = ({ members, showToast, isAdmin, onDeleteMember }: { members: 
                   <td className="p-3 font-mono text-[11px] opacity-80 truncate">{member.join_date || member.joinDate ? String(member.join_date || member.joinDate).split('T')[0] : 'N/A'}</td>
                   <td className="p-3 text-right">
                     <div className="flex space-x-3 items-center justify-end">
-                      <button onClick={() => showToast(t('edit_locked'), 'error')} className="font-mono text-[10px] uppercase hover:text-accent transition-colors">Edit</button>
-                      {isAdmin && (
-                        deletingId === member.id ? (
+                                            {isAdmin && (
+                        deletingId === member.uid ? (
                           <div className="flex items-center space-x-2">
                             <button onClick={() => { onDeleteMember(member.uid); setDeletingId(null); }} className="font-mono text-[9px] uppercase bg-accent text-bg px-2 py-0.5 font-bold">Conf</button>
                             <button onClick={() => setDeletingId(null)} className="font-mono text-[9px] uppercase bg-ink text-bg px-2 py-0.5">X</button>
                           </div>
                         ) : (
-                          <button onClick={() => setDeletingId(member.id)} className="font-mono text-[10px] uppercase text-accent hover:opacity-70 transition-colors" title="Delete Member">
+                          <button onClick={() => setDeletingId(member.uid)} className="font-mono text-[10px] uppercase text-accent hover:opacity-70 transition-colors" title="Delete Member">
                             <XCircle className="w-4 h-4" />
                           </button>
                         )
@@ -1792,6 +1791,9 @@ export default function App() {
   const t = (key: keyof typeof dict['en']) => {
     return dict[lang][key] || key;
   };
+
+    // Add language to AI prompt
+  const [aiLang] = useState(() => sessionStorage.getItem('__lang') || 'en');
 
   // Record every page visit
   useEffect(() => {

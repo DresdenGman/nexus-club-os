@@ -27,6 +27,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
   const [formNeedsApproval, setFormNeedsApproval] = useState(true);
   const [selectedClubId, setSelectedClubId] = useState('');
   const [myClubs, setMyClubs] = useState<any[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // Collaborator search
   const [allClubs, setAllClubs] = useState<any[]>([]);
@@ -48,6 +49,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
     const h: Record<string,string> = {'Content-Type':'application/json'};
     if (token) h['Authorization'] = 'Bearer ' + token;
     const r = await fetch((location.hostname==='localhost'?'http://localhost:3001/api':'/api')+path,{headers:h,...(init||{})});
+    if (!r.ok) { const e = await r.json().catch(() => ({error: 'Request failed'})); throw new Error(e.error || 'HTTP '+r.status); }
     return r.json();
   };
 

@@ -153,7 +153,7 @@ router.get('/memberships/my', requireAuth, async (req, res) => {
       .from('memberships')
       .select('club_id, role, status')
       .eq('user_id', req.user.uid)
-      .eq('status', 'active');
+      .neq('status', 'rejected');// include pending+active
 
     if (error) return res.status(400).json({ error: error.message });
     if (!memberships || memberships.length === 0) return res.json([]);
@@ -180,7 +180,7 @@ router.get('/clubs/:id/members', requireAuth, async (req, res) => {
       .from('memberships')
       .select('user_id, role, status')
       .eq('club_id', req.params.id)
-      .eq('status', 'active');
+      .neq('status', 'rejected');// include pending+active
 
     if (error) return res.status(400).json({ error: error.message });
     if (!memberships || memberships.length === 0) return res.json([]);
@@ -386,7 +386,7 @@ router.get('/activities', requireAuth, async (_req, res) => {
     const pending = (data || []).filter(a => a.status === 'pending_president' && a.creator_id === _req.user?.uid);
     const all = (data || []).filter(a => a.status === 'active');
     for (const a of [...all, ...pending]) {
-      const { count } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'active');
+      const { count } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).neq('status', 'rejected');// include pending+active
       const { count: pendingCount } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'pending');
       result.push({ ...a, participant_count: count || 0, pending_count: pendingCount || 0 });
     }
@@ -412,7 +412,7 @@ router.get('/activities/my', requireAuth, async (req, res) => {
     const result = [];
     for (const a of (activities || [])) {
       const p = participations.find(x => x.activity_id === a.id);
-      const { count: pc } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).eq('status', 'active');
+      const { count: pc } = await supabase.from('activity_participants').select('*', { count: 'exact', head: true }).eq('activity_id', a.id).neq('status', 'rejected');// include pending+active
       result.push({ ...a, my_role: p?.role, my_status: p?.status, participant_count: pc || 0 });
     }
     res.json(result);
