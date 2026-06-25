@@ -252,9 +252,16 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
                 <button onClick={() => handleJoin(selected.id)} className="flex-1 font-mono text-[11px] uppercase font-bold py-2 bg-accent text-bg hover:bg-ink transition-colors">
                   {selected.needs_approval ? 'Apply to Join' : 'Join Activity'}
                 </button>
-                <button onClick={() => handleDeleteRequest(selected.id)} className="font-mono text-[10px] uppercase text-red-500 border border-red-500/30 px-3 py-2 hover:bg-red-500 hover:text-white transition-colors">
-                  {T('act_delete')}
-                </button>
+                {confirmDelete === selected.id ? (
+                  <>
+                    <button onClick={() => { handleDeleteRequest(selected.id); setConfirmDelete(null); }} className="font-mono text-[9px] uppercase bg-red-500 text-white px-3 py-1 font-bold">Confirm Delete</button>
+                    <button onClick={() => setConfirmDelete(null)} className="font-mono text-[9px] uppercase border border-line px-3 py-1">Cancel</button>
+                  </>
+                ) : (
+                  <button onClick={() => setConfirmDelete(selected.id)} className="font-mono text-[10px] uppercase text-red-500 border border-red-500/30 px-3 py-2 hover:bg-red-500 hover:text-white transition-colors">
+                    {T('act_delete')}
+                  </button>
+                )}
               </div>
             </div>
           </div>
