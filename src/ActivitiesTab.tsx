@@ -121,6 +121,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
             <div className="font-sans text-[13px] mb-6 leading-relaxed">{selected.description}</div>
             {selected.join_link && <p className="font-mono text-[11px] mb-2">🔗 <a href={selected.join_link} target="_blank" className="underline hover:text-accent">Join Link</a></p>}
             <p className="font-mono text-[11px] mb-4">📞 Contact: {selected.contact_info}</p>
+            <p className="font-sans text-[12px] opacity-50 mb-2">{selected.participant_count || 0} joined</p>
             <div className="flex space-x-3 pt-4 border-t border-line">
               <button onClick={() => handleJoin(selected.id)} className="flex-1 font-mono text-[11px] uppercase font-bold py-2 bg-accent text-bg hover:bg-ink transition-colors">
                 {selected.needs_approval ? 'Apply to Join' : 'Join Activity'}
