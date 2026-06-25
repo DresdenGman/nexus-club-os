@@ -1692,7 +1692,7 @@ const handleSystemPurge = async () => {
             {activeTab === 'approvals' && <ApprovalsTab approvals={approvals} onApprove={handleApprove} onReject={handleReject} isAdmin={isAdmin} />}
             {activeTab === 'members' && <MembersTab members={members} showToast={showToast} isAdmin={isAdmin} onDeleteMember={handleDeleteMember} />}
             {activeTab === 'myclubs' && <MyClubsTab clubs={clubs} isAdmin={isAdmin} showToast={showToast} />}
-            {activeTab === 'activities' && <ActivitiesTab showToast={showToast} />}
+            {activeTab === 'activities' && <ActivitiesTab showToast={showToast} isAdmin={isAdmin} />}
             {activeTab === 'resources' && <ResourcesTab addApproval={handleAddApproval} showToast={showToast} userName={profile.name} />}
           </div>
         </main>

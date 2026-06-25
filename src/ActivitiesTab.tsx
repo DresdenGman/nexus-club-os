@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Calendar, ChevronRight, XCircle } from 'lucide-react';
-import { fetchMyMemberships } from './api';
+import { fetchMyMemberships, fetchClubs } from './api';
 
-const useTranslation = () => {
-  const { useContext, createContext } = React;
-  // Will be provided by parent
-  const ctx = (React as any).__langContext;
-  return ctx?.() || { t: (k: string) => k };
-};
-
-export const ActivitiesTab = ({ showToast }: { showToast: (msg: string, type?: string) => void }) => {
-  const { t } = { t: (k: string) => k }; // will use parent context via re-export
-  
+export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string, type?: string) => void; isAdmin: boolean }) => {
   const [activities, setActivities] = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -24,7 +15,13 @@ export const ActivitiesTab = ({ showToast }: { showToast: (msg: string, type?: s
   const [selectedClubId, setSelectedClubId] = useState('');
   const [myClubs, setMyClubs] = useState<any[]>([]);
 
-  useEffect(() => { fetchMyMemberships().then((m: any) => setMyClubs(m || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    if (isAdmin) {
+      fetchClubs().then((clubs: any) => setMyClubs((clubs || []).map((c: any) => ({ ...c, my_role: 'admin' })))).catch(() => {});
+    } else {
+      fetchMyMemberships().then((m: any) => setMyClubs(m || [])).catch(() => {});
+    }
+  }, [isAdmin]);
 
   const apiReq = async (path: string, init?: RequestInit) => {
     const token = sessionStorage.getItem('__auth_token');
@@ -102,7 +99,12 @@ export const ActivitiesTab = ({ showToast }: { showToast: (msg: string, type?: s
               <div><label className="block font-mono text-[9px] uppercase opacity-60 mb-1">Description *</label><textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={4} required className="w-full border border-line bg-transparent px-3 py-2 font-sans text-[13px] focus:outline-none focus:border-accent resize-none" /></div>
               <div><label className="block font-mono text-[9px] uppercase opacity-60 mb-1">Contact Info *</label><input value={formContact} onChange={e => setFormContact(e.target.value)} placeholder="Phone / WeChat / QQ" required className="w-full border border-line bg-transparent px-3 py-2 font-mono text-[11px] focus:outline-none focus:border-accent" /></div>
               <div><label className="block font-mono text-[9px] uppercase opacity-60 mb-1">Join Link (optional)</label><input value={formLink} onChange={e => setFormLink(e.target.value)} placeholder="Group chat link" className="w-full border border-line bg-transparent px-3 py-2 font-mono text-[11px] focus:outline-none focus:border-accent" /></div>
-              <div><label className="block font-mono text-[9px] uppercase opacity-60 mb-1">Host Club *</label><select value={selectedClubId} onChange={e => setSelectedClubId(e.target.value)} required className="w-full border border-line bg-transparent px-3 py-2 font-mono text-[11px] focus:outline-none focus:border-accent"><option value="">Select a club...</option>{myClubs.map((c: any) => <option key={c.id} value={c.id}>{c.name}{c.my_role==='president'?' (President)':''}</option>)}</select></div>
+              <div><label className="block font-mono text-[9px] uppercase opacity-60 mb-1">Host Club *</label>
+                <select value={selectedClubId} onChange={e => setSelectedClubId(e.target.value)} required className="w-full border border-line bg-transparent px-3 py-2 font-mono text-[11px] focus:outline-none focus:border-accent">
+                  <option value="">Select a club...</option>
+                  {myClubs.map((c: any) => <option key={c.id} value={c.id}>{c.name}{c.my_role==='president'?' (President)':c.my_role==='admin'?' (Admin)':''}</option>)}
+                </select>
+              </div>
               <div className="flex items-center space-x-2"><input type="checkbox" id="needs_approval" checked={formNeedsApproval} onChange={e => setFormNeedsApproval(e.target.checked)} className="border border-line" /><label htmlFor="needs_approval" className="font-mono text-[10px] uppercase opacity-60">Require approval to join</label></div>
               <div className="flex space-x-4 pt-4 border-t border-line"><button type="button" onClick={() => setShowCreate(false)} className="flex-1 font-mono text-[10px] uppercase font-bold py-2 border border-line hover:bg-ink hover:text-bg transition-colors">Cancel</button><button type="submit" className="flex-1 font-mono text-[10px] uppercase font-bold py-2 bg-ink text-bg hover:bg-accent transition-colors">Submit</button></div>
             </form>
