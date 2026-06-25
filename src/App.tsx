@@ -33,6 +33,7 @@ import {
   Line
 } from 'recharts';
 import { useAuth } from './AuthContext';
+import { ActivitiesTab } from './ActivitiesTab';
 import { 
   fetchClubs, createClub as apiCreateClub, updateClub, deleteClub as apiDeleteClub,
   fetchApprovals, createApproval, updateApproval,
@@ -1591,6 +1592,7 @@ const handleSystemPurge = async () => {
     { id: 'approvals', label: t('approvals'), icon: CheckCircle },
     { id: 'members', label: t('members'), icon: Users },
     { id: 'myclubs', label: t('my_clubs'), icon: Award },
+    { id: 'activities', label: 'Activities', icon: Calendar },
     { id: 'resources', label: t('resources'), icon: Calendar },
   ];
 
@@ -1690,6 +1692,7 @@ const handleSystemPurge = async () => {
             {activeTab === 'approvals' && <ApprovalsTab approvals={approvals} onApprove={handleApprove} onReject={handleReject} isAdmin={isAdmin} />}
             {activeTab === 'members' && <MembersTab members={members} showToast={showToast} isAdmin={isAdmin} onDeleteMember={handleDeleteMember} />}
             {activeTab === 'myclubs' && <MyClubsTab clubs={clubs} isAdmin={isAdmin} showToast={showToast} />}
+            {activeTab === 'activities' && <ActivitiesTab showToast={showToast} />}
             {activeTab === 'resources' && <ResourcesTab addApproval={handleAddApproval} showToast={showToast} userName={profile.name} />}
           </div>
         </main>
