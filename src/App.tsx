@@ -347,7 +347,7 @@ const AIAssistant = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-const DashboardTab = ({ clubs, approvals, lang }: { clubs: any[], approvals: any[], lang: Lang }) => {
+const DashboardTab = ({ clubs, approvals, visits, memberships, lang }: { clubs: any[], approvals: any[], visits: number[], memberships: number[], lang: Lang }) => {
   const { t } = useTranslation();
   const [insight, setInsight] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -457,12 +457,14 @@ const DashboardTab = ({ clubs, approvals, lang }: { clubs: any[], approvals: any
           </div>
           <div className="h-64 p-4">
             <ResponsiveContainer width="100%" height="100%" minHeight={1}>
-              <LineChart data={computeActivityData(approvals)}>
+              <LineChart data={computeActivityData(approvals, visits, memberships)}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#141414" opacity={0.2} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontFamily: 'monospace', fontSize: 10, fill: '#141414'}} />
                 <YAxis axisLine={false} tickLine={false} tick={{fontFamily: 'monospace', fontSize: 10, fill: '#141414'}} />
                 <Tooltip contentStyle={{borderRadius: 0, border: '1px solid #141414', backgroundColor: '#E4E3E0', fontFamily: 'monospace', fontSize: 10}} />
-                <Line type="step" dataKey="activities" stroke="#FF4400" strokeWidth={2} dot={{r: 4, fill: '#FF4400', stroke: '#141414', strokeWidth: 1}} />
+                <Line type="monotone" dataKey="visits" stroke="#141414" strokeWidth={2} dot={{r: 3, fill: '#141414'}} name="Visits" />
+                <Line type="monotone" dataKey="approvals" stroke="#FF4400" strokeWidth={2} dot={{r: 3, fill: '#FF4400'}} name="Approvals" />
+                <Line type="monotone" dataKey="memberships" stroke="#888888" strokeWidth={2} strokeDasharray="5 5" dot={{r: 3, fill: '#888888'}} name="Joins" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -1675,7 +1677,7 @@ const handleSystemPurge = async () => {
 
         <main className="flex-1 overflow-auto p-6">
           <div className="max-w-6xl mx-auto">
-            {activeTab === 'dashboard' && <DashboardTab clubs={clubs} approvals={approvals} lang={lang} />}
+            {activeTab === 'dashboard' && <DashboardTab clubs={clubs} approvals={approvals} visits={visits} memberships={dailyMemberships} lang={lang} />}
             {activeTab === 'clubs' && <ClubsTab clubs={clubs} addApproval={handleAddApproval} showToast={showToast} isAdmin={isAdmin} onDeleteClub={handleDeleteClub} />}
             {activeTab === 'approvals' && <ApprovalsTab approvals={approvals} onApprove={handleApprove} onReject={handleReject} isAdmin={isAdmin} />}
             {activeTab === 'members' && <MembersTab members={members} showToast={showToast} isAdmin={isAdmin} onDeleteMember={handleDeleteMember} />}

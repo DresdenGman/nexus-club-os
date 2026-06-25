@@ -45,6 +45,51 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/auth', authRoutes);
 
+// Visit counter
+app.post('/api/visit', async (_req, res) => {
+  try {
+    const { getSupabase } = await import('./db.js');
+    await getSupabase().from('visits').insert({});
+    res.json({ ok: true });
+  } catch { res.json({ ok: false }); }
+});
+
+// Daily visit counts for last 7 days
+app.get('/api/data/visits/daily', async (_req, res) => {
+  try {
+    const { getSupabase } = await import('./db.js');
+    const supabase = getSupabase();
+    const result = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayStr = d.toISOString().split('T')[0];
+      const { count } = await supabase.from('visits').select('*', { count: 'exact', head: true })
+        .gte('created_at', dayStr + 'T00:00:00Z').lt('created_at', dayStr + 'T23:59:59Z');
+      result.push(count || 0);
+    }
+    res.json(result);
+  } catch { res.json([0,0,0,0,0,0,0]); }
+});
+
+// Daily membership counts for last 7 days
+app.get('/api/data/memberships/daily', async (_req, res) => {
+  try {
+    const { getSupabase } = await import('./db.js');
+    const supabase = getSupabase();
+    const result = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayStr = d.toISOString().split('T')[0];
+      const { count } = await supabase.from('memberships').select('*', { count: 'exact', head: true })
+        .gte('created_at', dayStr + 'T00:00:00Z').lt('created_at', dayStr + 'T23:59:59Z');
+      result.push(count || 0);
+    }
+    res.json(result);
+  } catch { res.json([0,0,0,0,0,0,0]); }
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
