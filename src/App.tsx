@@ -66,6 +66,26 @@ const dict = {
     status_system: 'SYSTEM STATUS: NOMINAL // BRS CLUB PLATFORM',
     file_path: 'FILE_PATH: /BRS/CLUBS/PLATFORM.MD',
     auth_error: 'Authentication failed. Please check credentials.',
+    app_submitted: 'Application submitted!',
+    bg_updated: 'Background updated!',
+    upload_failed: 'Upload failed',
+    desc_optimized: 'Description optimized by AI',
+    error_updating: 'Error updating record',
+    fill_all_fields: 'Please fill all fields',
+    club_deleted: 'Club permanently deleted',
+    member_removed: 'Member removed from system',
+    approval_only_club: 'Only Club Registration approvals can be processed here',
+    approved_ok: 'Approved successfully',
+    rejected_ok: 'Rejected successfully',
+    no_data_export: 'No data to export',
+    apply_to_join: 'Apply to Join',
+    join_activity: 'Join Activity',
+    already_joined: 'Already joined',
+    image_only: 'Only image files allowed',  
+    image_too_large: 'Image too large (max 500KB)',
+    activity_deleted: 'Activity deleted',
+    my_activities: 'My Activities',
+    please_fill_required: 'Please fill required fields',
     total_clubs: 'Total Clubs',
     active_members: 'Total Users',
     pending_apps: 'Pending Approvals',
@@ -642,7 +662,7 @@ const filteredClubs = clubs.filter((c: any) => c.name.toLowerCase().includes(sea
                     onClick={async () => {
                       try {
                         await applyToClub(selectedClub.id);
-                        showToast('Application submitted!', 'success');
+                        showToast(t('app_submitted'), 'success');
                       } catch (e: any) {
                         showToast(e.message, 'error');
                       }
@@ -673,12 +693,12 @@ const filteredClubs = clubs.filter((c: any) => c.name.toLowerCase().includes(sea
                           if (res.ok) {
                             const d = await res.json();
                             setSelectedClub({ ...selectedClub, image: d.image_url });
-                            showToast('Background updated!', 'success');
+                            showToast(t('bg_updated'), 'success');
                           } else {
                             const d = await res.json();
                             showToast(d.error || 'Upload failed', 'error');
                           }
-                        } catch { showToast('Upload failed', 'error'); }
+                        } catch { showToast(t('upload_failed'), 'error'); }
                       }}
                     />
                   </label>
@@ -696,9 +716,9 @@ const filteredClubs = clubs.filter((c: any) => c.name.toLowerCase().includes(sea
                         const desc = await generateClubDescription(selectedClub.name, selectedClub.type);
                         try {
                           await updateClub(selectedClub.id, { description: desc });
-                          showToast('Description optimized by AI', 'success');
+                          showToast(t('desc_optimized'), 'success');
                         } catch (e) {
-                          showToast('Error updating record', 'error');
+                          showToast(t('error_updating'), 'error');
                         }
                       }}
                       className="flex items-center space-x-2 font-mono text-[9px] uppercase border border-line px-2 py-1 hover:bg-ink hover:text-bg transition-colors"
@@ -1185,7 +1205,7 @@ const ResourcesTab = ({ addApproval, showToast, userName }: { addApproval: (type
   
   const handleVenueSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if(!date || !time || !purpose) return showToast('Please fill all fields', 'error');
+    if(!date || !time || !purpose) return showToast(t('fill_all_fields'), 'error');
     const detailsObj = { venue, date, time, purpose };
     addApproval('Venue Booking', JSON.stringify(detailsObj));
     showToast(t('req_submitted'), 'success');
@@ -1392,7 +1412,7 @@ const handleSystemPurge = async () => {
     try {
       await apiDeleteClub(id);
       setClubs(prev => prev.filter(c => c.id !== id));
-      showToast('Club permanently deleted', 'success');
+      showToast(t('club_deleted'), 'success');
       return true;
     } catch (error: any) {
       showToast('Error: ' + error.message, 'error');
@@ -1404,7 +1424,7 @@ const handleSystemPurge = async () => {
     try {
       await apiDeleteUser(uid);
       setMembers(prev => prev.filter(m => m.uid !== uid));
-      showToast('Member removed from system', 'success');
+      showToast(t('member_removed'), 'success');
     } catch (error: any) {
       showToast('Error: ' + error.message, 'error');
     }
@@ -1438,13 +1458,13 @@ const handleSystemPurge = async () => {
         const club = await apiCreateClub(clubData);
         // President membership is auto-created by backend
       } else {
-        showToast('Only Club Registration approvals can be processed here', 'info');
+        showToast(t('approval_only_club'), 'info');
         return;
       }
       await updateApproval(id, { status: 'Approved' });
       setApprovals(prev => prev.map((a: any) => a.id === id ? { ...a, status: 'Approved' } : a));
       await refreshData();
-      showToast('Approved successfully', 'success');
+      showToast(t('approved_ok'), 'success');
     } catch (error: any) {
       showToast('Error: ' + error.message, 'error');
     } finally {
@@ -1459,7 +1479,7 @@ const handleSystemPurge = async () => {
     try {
       await updateApproval(id, { status: 'Rejected' });
       setApprovals(prev => prev.map((a: any) => a.id === id ? { ...a, status: 'Rejected' } : a));
-      showToast('Rejected successfully', 'success');
+      showToast(t('rejected_ok'), 'success');
     } catch (error: any) {
       showToast('Error: ' + error.message, 'error');
     } finally {
@@ -1480,7 +1500,7 @@ const handleSystemPurge = async () => {
 
   const handleExportCSV = (data: any[], filename: string) => {
     if (!data || data.length === 0) {
-      showToast('No data to export', 'info');
+      showToast(t('no_data_export'), 'info');
       return;
     }
     const headers = Object.keys(data[0]).join(',');
@@ -1508,7 +1528,7 @@ const handleSystemPurge = async () => {
       showToast(t('export_success'), 'success');
     } catch (e: any) {
       console.error(e);
-      showToast('Export error: ' + e.message, 'error');
+      showToast(t('export_error') + ': ' + e.message, 'error');
     }
   };
 

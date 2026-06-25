@@ -64,8 +64,8 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) return showToast('Only image files allowed', 'error');
-    if (file.size > 500 * 1024) { showToast('Image too large (max 500KB)', 'error'); return; }
+    if (!file.type.startsWith('image/')) return showToast(T('image_only'), 'error');
+    if (file.size > 500 * 1024) { showToast(T('image_too_large'), 'error'); return; }
     const reader = new FileReader();
     reader.onload = () => { setFormImage(reader.result as string); };
     reader.readAsDataURL(file);
@@ -74,7 +74,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formTitle || !formDesc || !formContact || !selectedClubId) return showToast('Please fill required fields', 'error');
+    if (!formTitle || !formDesc || !formContact || !selectedClubId) return showToast(T('please_fill_required'), 'error');
     try {
       const body: any = { title: formTitle, description: formDesc, contact_info: formContact, join_link: formLink, primary_club_id: selectedClubId, needs_approval: formNeedsApproval };
       if (formStart) body.start_time = formStart;
@@ -94,7 +94,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
   const [joinedIds, setJoinedIds] = useState(new Set());
 
   const handleJoin = async (activityId: string) => {
-    if (joinedIds.has(activityId)) return showToast('Already joined', 'info');
+    if (joinedIds.has(activityId)) return showToast(T('already_joined'), 'info');
     setJoinedIds(prev => new Set(prev).add(activityId));
     try {
       const d = await apiReq('/data/activities/' + activityId + '/join', { method: 'POST' });
@@ -107,7 +107,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
   const handleDeleteRequest = async (activityId: string) => {
     try {
       await apiReq('/data/activities/' + activityId, { method: 'DELETE' });
-      showToast('Activity deleted', 'success');
+      showToast(T('activity_deleted'), 'success');
       setSelected(null);
       fetchActivities();
     } catch (e: any) { showToast(e.message, 'error'); }
@@ -246,8 +246,8 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
                       <div key={p.uid} className="flex items-center justify-between py-1 border-b border-line/10 last:border-0">
                         <span className="font-mono text-[11px]">{p.name || p.uid?.slice(0,8)}</span>
                         <div className="flex space-x-2">
-                          <button onClick={async (e: React.MouseEvent) => { e.stopPropagation(); try { const token = sessionStorage.getItem('__auth_token'); const h: Record<string,string>={'Content-Type':'application/json'}; if(token)h['Authorization']='Bearer '+token; await fetch((location.hostname==='localhost'?'http://localhost:3001/api':'/api')+'/data/activities/'+selected.id+'/participants/'+p.id,{method:'PATCH',headers:h,body:JSON.stringify({status:'active'})}); showToast('Approved','success'); } catch(ee: any){ showToast(ee.message,'error'); }}} className="font-mono text-[9px] uppercase bg-ink text-bg px-2 py-0.5 hover:bg-accent">{T('btn_approve')}</button>
-                          <button onClick={async (e: React.MouseEvent) => { e.stopPropagation(); try { const token = sessionStorage.getItem('__auth_token'); const h: Record<string,string>={'Content-Type':'application/json'}; if(token)h['Authorization']='Bearer '+token; await fetch((location.hostname==='localhost'?'http://localhost:3001/api':'/api')+'/data/activities/'+selected.id+'/participants/'+p.id,{method:'PATCH',headers:h,body:JSON.stringify({status:'rejected'})}); showToast('Rejected','success'); } catch(ee: any){ showToast(ee.message,'error'); }}} className="font-mono text-[9px] uppercase border border-line px-2 py-0.5 hover:bg-accent hover:text-bg">{T('btn_reject')}</button>
+                          <button onClick={async (e: React.MouseEvent) => { e.stopPropagation(); try { const token = sessionStorage.getItem('__auth_token'); const h: Record<string,string>={'Content-Type':'application/json'}; if(token)h['Authorization']='Bearer '+token; await fetch((location.hostname==='localhost'?'http://localhost:3001/api':'/api')+'/data/activities/'+selected.id+'/participants/'+p.id,{method:'PATCH',headers:h,body:JSON.stringify({status:'active'})}); showToast(T('btn_approve'),'success'); } catch(ee: any){ showToast(ee.message,'error'); }}} className="font-mono text-[9px] uppercase bg-ink text-bg px-2 py-0.5 hover:bg-accent">{T('btn_approve')}</button>
+                          <button onClick={async (e: React.MouseEvent) => { e.stopPropagation(); try { const token = sessionStorage.getItem('__auth_token'); const h: Record<string,string>={'Content-Type':'application/json'}; if(token)h['Authorization']='Bearer '+token; await fetch((location.hostname==='localhost'?'http://localhost:3001/api':'/api')+'/data/activities/'+selected.id+'/participants/'+p.id,{method:'PATCH',headers:h,body:JSON.stringify({status:'rejected'})}); showToast(T('btn_reject'),'success'); } catch(ee: any){ showToast(ee.message,'error'); }}} className="font-mono text-[9px] uppercase border border-line px-2 py-0.5 hover:bg-accent hover:text-bg">{T('btn_reject')}</button>
                         </div>
                       </div>
                     ))}
@@ -257,7 +257,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
 
               <div className="flex space-x-3 pt-4 border-t border-line">
                 <button onClick={() => handleJoin(selected.id)} className="flex-1 font-mono text-[11px] uppercase font-bold py-2 bg-accent text-bg hover:bg-ink transition-colors">
-                  {selected.needs_approval ? 'Apply to Join' : 'Join Activity'}
+                  {selected.needs_approval ? T('apply_to_join') : T('join_activity')}
                 </button>
                 {confirmDelete === selected.id ? (
                   <>
