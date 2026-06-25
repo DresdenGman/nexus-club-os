@@ -1332,7 +1332,14 @@ function MainApp() {
   const [password, setPassword] = useState('');
   const [signUpName, setSignUpName] = useState('');
   const [gradeClass, setGradeClass] = useState('');
+  const apiBase = location.hostname === "localhost" ? "http://localhost:3001/api" : "/api";
   const [isLoginFlow, setIsLoginFlow] = useState(true);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotCode, setForgotCode] = useState("");
+  const [forgotUid, setForgotUid] = useState("");
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotNewPw, setForgotNewPw] = useState("");
   const [authError, setAuthError] = useState('');
   const [showWelcome, setShowWelcome] = useState(false);
   const [showAI, setShowAI] = useState(false);
@@ -1643,6 +1650,11 @@ const handleSystemPurge = async () => {
             <button type="submit" className="w-full bg-ink text-bg font-mono text-[11px] uppercase font-bold py-3 hover:bg-accent transition-colors">
               {isLoginFlow ? t('login_btn') : t('signup_btn')}
             </button>
+            {isLoginFlow && (
+              <button type="button" onClick={() => setShowForgot(true)} className="w-full text-center font-mono text-[10px] opacity-40 hover:opacity-80 transition-opacity mt-2">
+                Forgot Password?
+              </button>
+            )}
           </form>
 
           <div className="flex items-center justify-between border-t border-line pt-6">
