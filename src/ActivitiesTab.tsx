@@ -3,6 +3,7 @@ import { Plus, Calendar, ChevronRight, XCircle } from 'lucide-react';
 import { fetchMyMemberships, fetchClubs } from './api';
 
 const T = (k: string) => {
+  try { sessionStorage.setItem('__lang', (window as any).__lang || 'en'); } catch {}
   const saved = sessionStorage.getItem('__lang') || 'en';
   const en: Record<string,string> = { activities:'Activities', create_activity:'Create Activity', act_title:'Title *', act_desc:'Description *', act_contact:'Contact Info *', act_link:'Join Link (optional)', act_host:'Host Club *', act_collab:'Joint Clubs (optional)', act_needs_approval:'Require approval to join', act_no_activities:'No activities yet. Create one!', act_published:'Activity published!', act_submitted:'Submitted for approval', act_joined:'Joined!', act_applied:'Applied - awaiting approval', ai_thinking:'Loading...' };
   const zh: Record<string,string> = { activities:'社团活动', create_activity:'发起活动', act_title:'标题 *', act_desc:'描述 *', act_contact:'联系方式 *', act_link:'加入链接（选填）', act_host:'主办社团 *', act_collab:'联合社团（选填）', act_needs_approval:'加入需要审批', act_no_activities:'暂无活动，快来创建一个！', act_published:'活动已发布！', act_submitted:'已提交，等待审批', act_joined:'已加入！', act_applied:'已申请，等待审批', ai_thinking:'载入中...' };
@@ -20,8 +21,6 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
   const [formLink, setFormLink] = useState('');
   const [formNeedsApproval, setFormNeedsApproval] = useState(true);
   const [selectedClubId, setSelectedClubId] = useState('');
-  const [collabClubIds, setCollabClubIds] = useState<string[]>([]);
-  const [collabSearch, setCollabSearch] = useState('');
   const [myClubs, setMyClubs] = useState<any[]>([]);
 
   useEffect(() => {
@@ -53,14 +52,13 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
     if (!formTitle || !formDesc || !formContact || !selectedClubId) return showToast('Please fill required fields', 'error');
     try {
       const body: any = { title: formTitle, description: formDesc, contact_info: formContact, join_link: formLink, primary_club_id: selectedClubId, needs_approval: formNeedsApproval };
-      if (collabClubIds.length) body.collaborator_ids = collabClubIds;
-      const d = await apiReq('/data/activities', { method: 'POST', body: JSON.stringify(body) });
+            const d = await apiReq('/data/activities', { method: 'POST', body: JSON.stringify(body) });
       if (d.error) throw new Error(d.error);
       showToast(d.status === 'active' ? T('act_published') : T('act_submitted'), 'success');
       setShowCreate(false);
-      setCollabClubIds([]);
-      fetchActivities();
+            fetchActivities();
     } catch (e: any) { showToast(e.message, 'error'); }
+  try { const full = await apiReq('/data/activities/'+activityId); if (full && !full.error) setSelected(full); } catch {}
   };
 
   const handleJoin = async (activityId: string) => {
@@ -70,10 +68,7 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
       showToast(d.status === 'active' ? T('act_joined') : T('act_applied'), 'success');
       fetchActivities();
     } catch (e: any) { showToast(e.message, 'error'); }
-  };
-
-  const toggleCollab = (clubId: string) => {
-    setCollabClubIds(prev => prev.includes(clubId) ? prev.filter(id => id !== clubId) : [...prev, clubId]);
+  try { const full = await apiReq('/data/activities/'+activityId); if (full && !full.error) setSelected(full); } catch {}
   };
 
   if (loading) return <div className="font-mono text-[11px] uppercase opacity-60 p-8">{T('ai_thinking')}</div>;
@@ -121,16 +116,8 @@ export const ActivitiesTab = ({ showToast, isAdmin }: { showToast: (msg: string,
                   {myClubs.map((c: any) => <option key={c.id} value={c.id}>{c.name}{c.my_role==='president'?' (President)':c.my_role==='admin'?' (Admin)':''}</option>)}
                 </select>
               </div>
-              <div><label className="block font-mono text-[9px] uppercase opacity-60 mb-1">{T('act_collab')}</label>
-                <input value={collabSearch} onChange={e => setCollabSearch(e.target.value)} placeholder="Search clubs..." className="w-full border border-line bg-transparent px-3 py-2 font-mono text-[11px] focus:outline-none focus:border-accent mb-2" />
-                <div className="max-h-32 overflow-y-auto border border-line/20">
-                  {fetchClubs && React.useMemo(() => {
-                    // We need all clubs for collab search - fetch on mount
-                    const [allClubs, setAllClubs] = useState<any[]>([]);
-                    return null;
-                  }, [])}
-                </div>
-              </div>
+
+
               <div className="flex items-center space-x-2"><input type="checkbox" id="needs_approval" checked={formNeedsApproval} onChange={e => setFormNeedsApproval(e.target.checked)} className="border border-line" /><label htmlFor="needs_approval" className="font-mono text-[10px] uppercase opacity-60">{T('act_needs_approval')}</label></div>
               <div className="flex space-x-4 pt-4 border-t border-line"><button type="button" onClick={() => setShowCreate(false)} className="flex-1 font-mono text-[10px] uppercase font-bold py-2 border border-line hover:bg-ink hover:text-bg transition-colors">Cancel</button><button type="submit" className="flex-1 font-mono text-[10px] uppercase font-bold py-2 bg-ink text-bg hover:bg-accent transition-colors">Submit</button></div>
             </form>

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as api from './api';
 
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api';
+
 interface UserProfile {
   uid: string;
   name: string;
@@ -74,6 +76,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    // Call server logout to blacklist token
+    const token = sessionStorage.getItem('__auth_token');
+    if (token) {
+      fetch(`${API_BASE}/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    }
     sessionStorage.removeItem('__auth_token');
     setUser(null);
     setProfile(null);

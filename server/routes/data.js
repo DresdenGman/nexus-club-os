@@ -455,12 +455,15 @@ router.post('/activities', requireAuth, async (req, res) => {
     }
     const supabase = getSupabase();
     
-    // Verify user is member of this club
-    const { data: membership } = await supabase.from('memberships')
-      .select('role').eq('user_id', req.user.uid).eq('club_id', primary_club_id).eq('status', 'active').maybeSingle();
-    if (!membership) return res.status(403).json({ error: 'You must be a member of this club' });
+    // Verify user is member of this club OR admin
+    const { data: profile } = await supabase.from('users').select('role').eq('uid', req.user.uid).maybeSingle();
+    if (profile?.role !== 'admin') {
+      const { data: membership } = await supabase.from('memberships')
+        .select('role').eq('user_id', req.user.uid).eq('club_id', primary_club_id).eq('status', 'active').maybeSingle();
+      if (!membership) return res.status(403).json({ error: 'You must be a member of this club' });
+    }
     
-    const isPresident = membership.role === 'president';
+    const isPresident = membership?.role === 'president' || profile?.role === 'admin';
     const status = isPresident ? 'active' : 'pending_president';
     
     const { data: activity, error } = await supabase.from('activities').insert({
@@ -474,9 +477,10 @@ router.post('/activities', requireAuth, async (req, res) => {
     if (error) return res.status(400).json({ error: error.message });
     
     // Auto-add creator as initiator
-    await supabase.from('activity_participants').insert({
+    const { error: partErr } = await supabase.from('activity_participants').insert({
       activity_id: activity.id, user_id: req.user.uid, role: 'initiator', status: 'active',
     });
+    if (partErr) console.error('Failed to add initiator:', partErr.message);
     
     // Add collaborators if any
     if (collaborator_ids?.length) {

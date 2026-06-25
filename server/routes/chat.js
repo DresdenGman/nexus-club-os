@@ -34,8 +34,8 @@ router.post('/', async (req, res) => {
           `- ${c.name} (${c.type}): ${c.description || 'No description'}, Members: ${c.members_count || 0}, President: ${nameMap[c.president_id] || 'Unknown'}`
         ).join('\n');
       }
-      const { data: totalUsers } = await s.from('users').select('count').limit(1);
-      platformContext += `\nTotal Users: ${totalUsers?.[0]?.count || '?'}`;
+      const { count: totalUsers } = await s.from('users').select('*', { count: 'exact', head: true });
+      platformContext += `\nTotal Users: ${totalUsers || '?'}`;
 
     } catch (e) {
       platformContext = '(Platform data unavailable)';
