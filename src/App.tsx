@@ -1373,42 +1373,6 @@ function MainApp() {
     authLogout();
   };
 
-  const [isPurging, setIsPurging] = useState(false);
-const handleSystemPurge = async () => {
-  if (isPurging) return;
-  setIsPurging(true);
-    if (!isAdmin) return;
-    
-    setToast({ message: "PURGE INITIATED...", type: "info" });
-    
-    try {
-      // Also clean memberships
-        const clubs = await fetchClubs();
-      for (const c of clubs) {
-        await apiDeleteClub(c.id);
-      }
-
-      const approvals = await fetchApprovals();
-      for (const a of approvals) {
-        await updateApproval(a.id, { status: 'Rejected' });
-      }
-
-      const users = await fetchUsers();
-      for (const u of users) {
-        if (u.uid !== user?.uid) {
-          await apiDeleteUser(u.uid);
-        }
-      }
-
-      showToast("SYSTEM PURGED: ALL DATA ERASED", "success");
-      void refreshData();
-      setIsPurging(false);
-    } catch (error) {
-      console.error("Purge Error", error);
-      showToast("PURGE FAILED: CHECK PERMISSIONS", "error");
-      setIsPurging(false);
-    }
-  };
 
   const handleDeleteClub = async (id: string) => {
     try {
