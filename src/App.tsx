@@ -1721,20 +1721,6 @@ const handleSystemPurge = async () => {
               <button onClick={() => handleExportCSV(approvals, `approvals_export_${new Date().getTime()}.csv`)} className="w-full flex items-center space-x-3 px-4 py-2 font-mono text-[10px] uppercase hover:bg-ink hover:text-bg transition-colors">
                 <span>{t('export_apps')}</span>
               </button>
-              {!showPurgeConfirm ? (
-                <button onClick={() => setShowPurgeConfirm(true)} className="w-full flex items-center space-x-3 px-4 py-2 font-mono text-[10px] uppercase text-accent hover:bg-accent hover:text-bg transition-colors">
-                  <XCircle className="w-3 h-3 mr-2" />
-                  <span>{t('purge_data')}</span>
-                </button>
-              ) : (
-                <div className="w-full flex flex-col space-y-2 p-2 border border-accent bg-accent/10">
-                  <span className="font-mono text-[10px] uppercase text-accent font-bold text-center">{t('are_you_sure')}</span>
-                  <div className="flex space-x-2">
-                    <button onClick={() => { handleSystemPurge(); setShowPurgeConfirm(false); }} className="flex-1 bg-accent text-bg px-2 py-1 font-mono text-[9px] uppercase font-bold hover:opacity-80">{t('confirm')}</button>
-                    <button onClick={() => setShowPurgeConfirm(false)} className="flex-1 bg-ink text-bg px-2 py-1 font-mono text-[9px] uppercase text-center hover:opacity-80">{t('cancel')}</button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
