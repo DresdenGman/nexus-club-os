@@ -167,7 +167,6 @@ const dict = {
     are_you_sure: 'Are you sure?',
     confirm_delete: 'CONFIRM DELETE',
     confirm: 'CONFIRM',
-    purge_data: 'PURGE SYSTEM DATA',
     // Loading
     loading: 'Initializing System...',
     no_members: 'No Members Found',
@@ -282,7 +281,6 @@ const dict = {
     are_you_sure: '确定吗？',
     confirm_delete: '确认删除',
     confirm: '确认',
-    purge_data: '清空所有数据',
     // Loading
     loading: '正在初始化系统...',
     no_members: '暂无成员',
@@ -1556,8 +1554,7 @@ const handleSystemPurge = async () => {
     return `${beijing.getUTCFullYear()}.${pad(beijing.getUTCMonth() + 1)}.${pad(beijing.getUTCDate())} // ${pad(beijing.getUTCHours())}:${pad(beijing.getUTCMinutes())}:${pad(beijing.getUTCSeconds())}`;
   };
 
-  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
-
+  
   if (loading) {
     return (
       <div className="h-screen w-full bg-bg text-ink font-sans border-8 border-ink flex items-center justify-center">
